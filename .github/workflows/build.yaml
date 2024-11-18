@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  packages: write
+
 jobs:
   test:
     uses: clambin/workflows/.github/workflows/test.yaml@main
