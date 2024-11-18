@@ -15,5 +15,4 @@ jobs:
       - test
     uses: clambin/workflows/.github/workflows/build.yaml@main
     with:
-      image: ghcr.io/<user>/<module>
-      dockerfile: Dockerfile
+      image: ghcr.io/clambin/github-stars
