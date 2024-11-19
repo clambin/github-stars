@@ -3,7 +3,7 @@ package stars
 import (
 	"context"
 	"errors"
-	ggh "github.com/google/go-github/v65/github"
+	"github.com/google/go-github/v66/github"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -41,7 +41,7 @@ var _ Repositories = &fakeRepositories{}
 
 type fakeRepositories struct{}
 
-func (f fakeRepositories) ListByUser(_ context.Context, _ string, opts *ggh.RepositoryListByUserOptions) ([]*ggh.Repository, *ggh.Response, error) {
+func (f fakeRepositories) ListByUser(_ context.Context, _ string, opts *github.RepositoryListByUserOptions) ([]*github.Repository, *github.Response, error) {
 	resp, ok := listResponses[opts.Page]
 	if !ok {
 		return nil, nil, errors.New("page not found")
@@ -51,28 +51,28 @@ func (f fakeRepositories) ListByUser(_ context.Context, _ string, opts *ggh.Repo
 }
 
 type listResponse struct {
-	repos []*ggh.Repository
-	resp  *ggh.Response
+	repos []*github.Repository
+	resp  *github.Response
 }
 
 var listResponses = map[int]listResponse{
 	0: {
-		repos: []*ggh.Repository{
+		repos: []*github.Repository{
 			{
 				FullName: ConstP("foo/foo"),
 				Name:     ConstP("foo"),
 			},
 		},
-		resp: &ggh.Response{NextPage: 1},
+		resp: &github.Response{NextPage: 1},
 	},
 	1: {
-		repos: []*ggh.Repository{
+		repos: []*github.Repository{
 			{
 				FullName: ConstP("foo/bar"),
 				Name:     ConstP("bar"),
 			},
 		},
-		resp: &ggh.Response{NextPage: 0},
+		resp: &github.Response{NextPage: 0},
 	},
 }
 
@@ -82,7 +82,7 @@ var _ Activity = &fakeActivity{}
 
 type fakeActivity struct{}
 
-func (f fakeActivity) ListStargazers(_ context.Context, _ string, repo string, opts *ggh.ListOptions) ([]*ggh.Stargazer, *ggh.Response, error) {
+func (f fakeActivity) ListStargazers(_ context.Context, _ string, repo string, opts *github.ListOptions) ([]*github.Stargazer, *github.Response, error) {
 	repoResps, ok := stargazerResponses[repo]
 	if !ok {
 		return nil, nil, errors.New("repo not found")
@@ -97,25 +97,25 @@ func (f fakeActivity) ListStargazers(_ context.Context, _ string, repo string, o
 var stargazerResponses = map[string]map[int]stargazerResponse{
 	"foo": {
 		0: {
-			gazers: []*ggh.Stargazer{{
-				StarredAt: &ggh.Timestamp{Time: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
-				User:      &ggh.User{Login: ConstP("user1")},
+			gazers: []*github.Stargazer{{
+				StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
+				User:      &github.User{Login: ConstP("user1")},
 			}},
-			resp: &ggh.Response{NextPage: 1},
+			resp: &github.Response{NextPage: 1},
 		},
 		1: {
-			gazers: []*ggh.Stargazer{{
-				StarredAt: &ggh.Timestamp{Time: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
-				User:      &ggh.User{Login: ConstP("user2")},
+			gazers: []*github.Stargazer{{
+				StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
+				User:      &github.User{Login: ConstP("user2")},
 			}},
-			resp: &ggh.Response{NextPage: 0},
+			resp: &github.Response{NextPage: 0},
 		},
 	},
 }
 
 type stargazerResponse struct {
-	gazers []*ggh.Stargazer
-	resp   *ggh.Response
+	gazers []*github.Stargazer
+	resp   *github.Response
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

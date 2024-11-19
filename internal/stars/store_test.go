@@ -1,7 +1,7 @@
 package stars
 
 import (
-	ggh "github.com/google/go-github/v65/github"
+	"github.com/google/go-github/v66/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -27,13 +27,13 @@ func TestStore(t *testing.T) {
 
 	assert.NoError(t, s.Load())
 
-	r := ggh.Repository{
+	r := github.Repository{
 		Name:     ConstP("foo"),
 		FullName: ConstP("foo/foo"),
 	}
-	g := ggh.Stargazer{
-		User:      &ggh.User{Login: ConstP("user2")},
-		StarredAt: &ggh.Timestamp{Time: time.Date(2024, time.November, 19, 22, 0, 0, 0, time.UTC)},
+	g := github.Stargazer{
+		User:      &github.User{Login: ConstP("user2")},
+		StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 19, 22, 0, 0, 0, time.UTC)},
 	}
 
 	added, err := s.Add(&r, &g)

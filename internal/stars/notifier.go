@@ -1,7 +1,7 @@
 package stars
 
 import (
-	ggh "github.com/google/go-github/v65/github"
+	"github.com/google/go-github/v66/github"
 	"github.com/slack-go/slack"
 	"log/slog"
 	"strconv"
@@ -9,14 +9,14 @@ import (
 )
 
 type Notifier interface {
-	Notify(repository *ggh.Repository, gazers []*ggh.Stargazer)
+	Notify(repository *github.Repository, gazers []*github.Stargazer)
 }
 
 var _ Notifier = Notifiers{}
 
 type Notifiers []Notifier
 
-func (n Notifiers) Notify(repository *ggh.Repository, gazers []*ggh.Stargazer) {
+func (n Notifiers) Notify(repository *github.Repository, gazers []*github.Stargazer) {
 	for _, notifier := range n {
 		notifier.Notify(repository, gazers)
 	}
@@ -30,7 +30,7 @@ type SLogNotifier struct {
 	Logger *slog.Logger
 }
 
-func (s SLogNotifier) Notify(repository *ggh.Repository, gazers []*ggh.Stargazer) {
+func (s SLogNotifier) Notify(repository *github.Repository, gazers []*github.Stargazer) {
 	s.Logger.Info("repo has new stargazers",
 		"repo", repository.GetFullName(),
 		"stargazers", len(gazers))
@@ -43,7 +43,7 @@ type SlackWebHookNotifier struct {
 	Logger     *slog.Logger
 }
 
-func (s *SlackWebHookNotifier) Notify(repository *ggh.Repository, gazers []*ggh.Stargazer) {
+func (s *SlackWebHookNotifier) Notify(repository *github.Repository, gazers []*github.Stargazer) {
 	err := slack.PostWebhook(s.WebHookURL, &slack.WebhookMessage{
 		Text:        s.makeMessage(repository, gazers),
 		UnfurlLinks: false,
@@ -53,7 +53,7 @@ func (s *SlackWebHookNotifier) Notify(repository *ggh.Repository, gazers []*ggh.
 	}
 }
 
-func (s *SlackWebHookNotifier) makeMessage(repository *ggh.Repository, gazers []*ggh.Stargazer) string {
+func (s *SlackWebHookNotifier) makeMessage(repository *github.Repository, gazers []*github.Stargazer) string {
 	list := make([]string, len(gazers))
 	for i, gazer := range gazers {
 		list[i] = "<" + gazer.GetUser().GetHTMLURL() + "|@" + gazer.GetUser().GetLogin() + ">"

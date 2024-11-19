@@ -3,7 +3,7 @@ package stars
 import (
 	"encoding/json"
 	"fmt"
-	ggh "github.com/google/go-github/v65/github"
+	"github.com/google/go-github/v66/github"
 	"io"
 	"os"
 	"path/filepath"
@@ -55,7 +55,7 @@ func (s *Store) write(w io.Writer) error {
 	return enc.Encode(s.Repos)
 }
 
-func (s *Store) Add(repo *ggh.Repository, newStargazer *ggh.Stargazer) (bool, error) {
+func (s *Store) Add(repo *github.Repository, newStargazer *github.Stargazer) (bool, error) {
 	if !s.addIfNew(repo, newStargazer) {
 		return false, nil
 	}
@@ -64,7 +64,7 @@ func (s *Store) Add(repo *ggh.Repository, newStargazer *ggh.Stargazer) (bool, er
 	return true, s.Save()
 }
 
-func (s *Store) addIfNew(repo *ggh.Repository, newStargazer *ggh.Stargazer) bool {
+func (s *Store) addIfNew(repo *github.Repository, newStargazer *github.Stargazer) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

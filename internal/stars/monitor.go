@@ -3,7 +3,7 @@ package stars
 import (
 	"context"
 	"fmt"
-	ggh "github.com/google/go-github/v65/github"
+	"github.com/google/go-github/v66/github"
 	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"sync"
@@ -71,7 +71,7 @@ func (r *RepoScanner) pollRepos(ctx context.Context) error {
 	return nil
 }
 
-func (r *RepoScanner) startProcessor(ctx context.Context, repo *ggh.Repository) {
+func (r *RepoScanner) startProcessor(ctx context.Context, repo *github.Repository) {
 	p := Processor{
 		User:       r.User,
 		Repository: repo,
@@ -90,7 +90,7 @@ func (r *RepoScanner) startProcessor(ctx context.Context, repo *ggh.Repository) 
 
 type Processor struct {
 	User       string
-	Repository *ggh.Repository
+	Repository *github.Repository
 	Interval   time.Duration
 	Client     *Client
 	Store      *Store
@@ -117,7 +117,7 @@ func (p *Processor) Run(ctx context.Context) {
 }
 
 func (p *Processor) getStargazers(ctx context.Context) error {
-	var newStarGazers []*ggh.Stargazer
+	var newStarGazers []*github.Stargazer
 	for starGazer, err := range p.Client.GetStarGazers(ctx, p.User, p.Repository.GetName()) {
 		if err != nil {
 			return err

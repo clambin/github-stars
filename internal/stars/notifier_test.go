@@ -1,18 +1,18 @@
 package stars
 
 import (
-	ggh "github.com/google/go-github/v65/github"
+	"github.com/google/go-github/v66/github"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestSlackWebHookNotifier_makeMessage(t *testing.T) {
-	repo := &ggh.Repository{
+	repo := &github.Repository{
 		FullName: ConstP("foo/bar"),
 		HTMLURL:  ConstP("https://example.com/foo/bar"),
 	}
-	gazers := []*ggh.Stargazer{{
-		User: &ggh.User{
+	gazers := []*github.Stargazer{{
+		User: &github.User{
 			Login:   ConstP("user1"),
 			HTMLURL: ConstP("https://example.com/users/user1"),
 		},
@@ -22,8 +22,8 @@ func TestSlackWebHookNotifier_makeMessage(t *testing.T) {
 	text := s.makeMessage(repo, gazers)
 	assert.Equal(t, `Repo <https://example.com/foo/bar|foo/bar> received a star from <https://example.com/users/user1|@user1>`, text)
 
-	gazers = append(gazers, &ggh.Stargazer{
-		User: &ggh.User{
+	gazers = append(gazers, &github.Stargazer{
+		User: &github.User{
 			Login:   ConstP("user2"),
 			HTMLURL: ConstP("https://example.com/users/user2"),
 		},
