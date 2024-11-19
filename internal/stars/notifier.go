@@ -44,8 +44,6 @@ type SlackWebHookNotifier struct {
 }
 
 func (s *SlackWebHookNotifier) Notify(repository *ggh.Repository, gazers []*ggh.Stargazer) {
-	s.Logger.Debug("slack notification", "repo", repository.GetFullName(), "count", len(gazers))
-
 	err := slack.PostWebhook(s.WebHookURL, &slack.WebhookMessage{
 		Text:        s.makeMessage(repository, gazers),
 		UnfurlLinks: false,
