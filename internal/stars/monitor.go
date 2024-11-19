@@ -53,9 +53,12 @@ func (r *RepoScanner) pollRepos(ctx context.Context) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	start := time.Now()
 	var reposFound, reposProcessing int
 	r.Logger.Debug("polling repos")
-	defer func() { r.Logger.Debug("repos polled", "found", reposFound, "processing", reposProcessing) }()
+	defer func() {
+		r.Logger.Debug("repos polled", "found", reposFound, "processing", reposProcessing, "duration", time.Since(start))
+	}()
 
 	for repo, err := range r.Client.GetUserRepoNames(ctx, r.User) {
 		reposFound++
