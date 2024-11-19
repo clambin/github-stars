@@ -5,7 +5,7 @@ import (
 	"errors"
 	"flag"
 	"github.com/clambin/github-stars/internal/stars"
-	ggh "github.com/google/go-github/v65/github"
+	"github.com/google/go-github/v66/github"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/oauth2"
 	"log/slog"
@@ -61,10 +61,10 @@ func main() {
 		RepoInterval: *repoInterval,
 		StarInterval: *starInterval,
 		Logger:       l,
-		Client: stars.New(ggh.NewClient(oauth2.NewClient(ctx, oauth2.StaticTokenSource(
+		Client: stars.New(github.NewClient(oauth2.NewClient(ctx, oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: *githubToken},
 		)))),
-		RepoStore:       &stars.Store{DatabasePath: *directory},
+		Store:           &stars.Store{DatabasePath: *directory},
 		Notifier:        notifiers,
 		IncludeArchived: *includeArchived,
 	}
