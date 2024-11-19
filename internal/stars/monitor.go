@@ -11,30 +11,24 @@ import (
 )
 
 type RepoScanner struct {
-	User         string
-	RepoInterval time.Duration
-	StarInterval time.Duration
-	Logger       *slog.Logger
-	Client       *Client
-	RepoStore
-	Notifier
+	User            string
+	RepoInterval    time.Duration
+	StarInterval    time.Duration
+	Logger          *slog.Logger
+	Client          *Client
+	Store           *Store
+	Notifier        Notifier
 	lock            sync.Mutex
 	processors      map[string]struct{}
 	IncludeArchived bool
 	children        errgroup.Group
 }
 
-type RepoStore interface {
-	Add(*ggh.Repository, *ggh.Stargazer) (bool, error)
-	Load() error
-	Save() error
-}
-
 func (r *RepoScanner) Run(ctx context.Context) error {
 	ticker := time.NewTicker(r.RepoInterval)
 	defer ticker.Stop()
 
-	if err := r.RepoStore.Load(); err != nil {
+	if err := r.Store.Load(); err != nil {
 		r.Logger.Warn("failed to read stargazers store", "err", err)
 	}
 	for {
@@ -61,29 +55,37 @@ func (r *RepoScanner) pollRepos(ctx context.Context) error {
 	}()
 
 	for repo, err := range r.Client.GetUserRepoNames(ctx, r.User) {
-		reposFound++
 		if err != nil {
 			return fmt.Errorf("GetUserRepoNames: %w", err)
 		}
+		reposFound++
 		r.Logger.Debug("repo found", "repo", repo.GetFullName(), "archived", repo.GetArchived())
 		if !r.IncludeArchived && repo.GetArchived() {
 			continue
 		}
 		if _, ok := r.processors[repo.GetName()]; !ok {
 			reposProcessing++
-			p := Processor{
-				User:       r.User,
-				Repository: repo,
-				Interval:   r.StarInterval,
-				Client:     r.Client,
-				RepoStore:  r.RepoStore,
-				Notifier:   r.Notifier,
-				Logger:     r.Logger.With("repo", repo.GetFullName()),
-			}
-			r.children.Go(func() error { p.Run(ctx); return nil })
+			r.startProcessor(ctx, repo)
 		}
 	}
 	return nil
+}
+
+func (r *RepoScanner) startProcessor(ctx context.Context, repo *ggh.Repository) {
+	p := Processor{
+		User:       r.User,
+		Repository: repo,
+		Interval:   r.StarInterval,
+		Client:     r.Client,
+		Store:      r.Store,
+		Notifier:   r.Notifier,
+		Logger:     r.Logger.With("repo", repo.GetFullName()),
+	}
+	if r.processors == nil {
+		r.processors = make(map[string]struct{})
+	}
+	r.processors[repo.GetName()] = struct{}{}
+	r.children.Go(func() error { p.Run(ctx); return nil })
 }
 
 type Processor struct {
@@ -91,9 +93,9 @@ type Processor struct {
 	Repository *ggh.Repository
 	Interval   time.Duration
 	Client     *Client
-	RepoStore
-	Notifier
-	Logger *slog.Logger
+	Store      *Store
+	Notifier   Notifier
+	Logger     *slog.Logger
 }
 
 func (p *Processor) Run(ctx context.Context) {
@@ -120,7 +122,7 @@ func (p *Processor) getStargazers(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		added, err := p.RepoStore.Add(p.Repository, starGazer)
+		added, err := p.Store.Add(p.Repository, starGazer)
 		if err != nil {
 			return err
 		}

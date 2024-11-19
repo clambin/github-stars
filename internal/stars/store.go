@@ -67,16 +67,23 @@ func (s *Store) Add(repo *ggh.Repository, newStargazer *ggh.Stargazer) (bool, er
 func (s *Store) addIfNew(repo *ggh.Repository, newStargazer *ggh.Stargazer) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	if s.Repos == nil {
-		s.Repos = make(map[string]repository)
-	}
+
 	r, found := s.Repos[repo.GetFullName()]
 	if !found {
-		if r == nil {
-			r = make(map[string]stargazer, 1)
-		}
+		r = make(map[string]stargazer)
+	}
+	if _, found = r[newStargazer.GetUser().GetLogin()]; !found {
 		r[newStargazer.GetUser().GetLogin()] = stargazer{StarredAt: newStargazer.GetStarredAt().Time}
+		if s.Repos == nil {
+			s.Repos = make(map[string]repository)
+		}
 		s.Repos[repo.GetFullName()] = r
 	}
 	return !found
+}
+
+func (s *Store) Len() int {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	return len(s.Repos)
 }

@@ -64,7 +64,7 @@ func main() {
 		Client: stars.New(ggh.NewClient(oauth2.NewClient(ctx, oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: *githubToken},
 		)))),
-		RepoStore:       &stars.Store{DatabasePath: *directory},
+		Store:           &stars.Store{DatabasePath: *directory},
 		Notifier:        notifiers,
 		IncludeArchived: *includeArchived,
 	}
