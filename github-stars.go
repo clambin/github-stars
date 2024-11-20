@@ -42,14 +42,14 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
-		if err := http.ListenAndServe(*webHookAddr, nil); !errors.Is(err, http.ErrServerClosed) {
+		if err := http.ListenAndServe(*addr, nil); !errors.Is(err, http.ErrServerClosed) {
 			l.Warn("failed to start Prometheus handler", "err", err)
 		}
 	}()
 
 	webhook := listener.Listener{Secret: "todo", Logger: l}
 	go func() {
-		if err := http.ListenAndServe(*addr, &webhook); !errors.Is(err, http.ErrServerClosed) {
+		if err := http.ListenAndServe(*webHookAddr, &webhook); !errors.Is(err, http.ErrServerClosed) {
 			l.Warn("failed to start WebHook handler", "err", err)
 		}
 	}()
