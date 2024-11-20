@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/google/go-github/v66/github"
 	"io"
 	"log/slog"
 	"net/http"
@@ -13,19 +14,6 @@ import (
 type Listener struct {
 	Secret string
 	Logger *slog.Logger
-}
-
-type StarPayload struct {
-	Action string `json:"action"`
-	Repo   struct {
-		Name  string `json:"name"`
-		Owner struct {
-			Login string `json:"login"`
-		} `json:"owner"`
-	} `json:"repository"`
-	Sender struct {
-		Login string `json:"login"`
-	} `json:"sender"`
 }
 
 func (l *Listener) verifySignature(payload []byte, signature string) bool {
@@ -42,7 +30,7 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	l.Logger.Debug("received request", "header", r.Header, "body", string(body))
+	l.Logger.Debug("received request", "req", r.URL.String(), "header", r.Header, "body", string(body))
 
 	// Verify webhook signature
 	signature := r.Header.Get("X-Hub-Signature-256")
@@ -53,19 +41,20 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Parse the webhook payload
-	var payload StarPayload
-	if err := json.Unmarshal(body, &payload); err != nil {
+	var event github.StarEvent
+	if err := json.Unmarshal(body, &event); err != nil {
 		l.Logger.Error("Unable to parse request body", "err", err)
 		http.Error(w, "Unable to parse payload", http.StatusInternalServerError)
 		return
 	}
 
 	// Handle the "star" event
-	if payload.Action == "created" {
+	if event.GetAction() == "created" {
 		l.Logger.Info("Repo received a star",
-			"repo", payload.Repo.Name,
-			"owner", payload.Repo.Owner.Login,
-			"giver", payload.Sender.Login,
+			"repo", event.GetRepo().GetFullName(),
+			"owner", event.GetRepo().GetOwner().GetLogin(),
+			"giver", event.GetSender().GetLogin(),
+			"date", event.GetStarredAt().Time,
 		)
 	}
 
