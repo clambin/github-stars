@@ -1,6 +1,7 @@
 package store
 
 import (
+	"github.com/clambin/github-stars/internal/testutils"
 	"github.com/google/go-github/v66/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,19 +62,19 @@ func TestStore_SetStargazers(t *testing.T) {
 `
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "stargazers.json"), []byte(input), 0600))
 
-	s := Store{DatabasePath: tmpDir}
+	s := New(tmpDir)
 	require.NoError(t, s.Load())
 
 	// fetched: user2, user3
 	fetched := []*github.Stargazer{
-		{User: &github.User{Login: ConstP("user2")}, StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 9, 0, 0, 0, time.UTC)}},
-		{User: &github.User{Login: ConstP("user3")}, StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 9, 30, 0, 0, time.UTC)}},
+		{User: &github.User{Login: testutils.Ptr("user2")}, StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 9, 0, 0, 0, time.UTC)}},
+		{User: &github.User{Login: testutils.Ptr("user3")}, StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 9, 30, 0, 0, time.UTC)}},
 	}
 	newStargazers, err := s.SetStargazers("foo/foo", fetched)
 	assert.NoError(t, err)
 	// expected new: user3
 	wantNewStargazers := []*github.Stargazer{
-		{User: &github.User{Login: ConstP("user3")}, StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 9, 30, 0, 0, time.UTC)}},
+		{User: &github.User{Login: testutils.Ptr("user3")}, StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 9, 30, 0, 0, time.UTC)}},
 	}
 	assert.Equal(t, wantNewStargazers, newStargazers)
 	assert.Equal(t, len(wantNewStargazers), s.Len())
@@ -97,6 +98,37 @@ func TestStore_SetStargazers(t *testing.T) {
 
 }
 
-func ConstP[T any](t T) *T {
-	return &t
+func TestStore_Add_Delete(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
+
+	s := New(tmpDir)
+	assert.Error(t, s.Load())
+
+	repo := github.Repository{Name: testutils.Ptr("repo")}
+	stargazer := github.Stargazer{
+		User:      &github.User{Login: testutils.Ptr("user")},
+		StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 21, 30, 0, 0, time.UTC)},
+	}
+
+	// Add a new stargazer
+	added, err := s.Add(&repo, &stargazer)
+	require.NoError(t, err)
+	assert.True(t, added)
+
+	// Add an existing stargazer
+	added, err = s.Add(&repo, &stargazer)
+	require.NoError(t, err)
+	assert.False(t, added)
+
+	// Delete an existing stargazer
+	added, err = s.Delete(&repo, &stargazer)
+	require.NoError(t, err)
+	assert.True(t, added)
+
+	// Delete an non-existing stargazer
+	added, err = s.Delete(&repo, &stargazer)
+	require.NoError(t, err)
+	assert.False(t, added)
 }

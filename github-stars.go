@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"github.com/clambin/github-stars/internal/listener"
 	"github.com/clambin/github-stars/internal/stars"
 	"github.com/clambin/github-stars/internal/store"
+	"github.com/clambin/github-stars/internal/webhook"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log/slog"
 	"net/http"
@@ -47,19 +47,25 @@ func main() {
 		}
 	}()
 
-	webhook := listener.Listener{Secret: "todo", Logger: l}
-	go func() {
-		if err := http.ListenAndServe(*webHookAddr, &webhook); !errors.Is(err, http.ErrServerClosed) {
-			l.Warn("failed to start WebHook handler", "err", err)
-		}
-	}()
-
 	notifiers := stars.Notifiers{
 		stars.SLogNotifier{Logger: l},
 	}
 	if *slackWebHook != "" {
 		notifiers = append(notifiers, &stars.SlackWebHookNotifier{WebHookURL: *slackWebHook, Logger: l})
 	}
+
+	repoStore := store.New(*directory)
+
+	lst := webhook.Webhook{
+		Store:  repoStore,
+		Logger: l.With("component", "webhook"),
+	}
+
+	go func() {
+		if err := http.ListenAndServe(*webHookAddr, webhook.GitHubAuth("todo")(&lst)); !errors.Is(err, http.ErrServerClosed) {
+			l.Warn("failed to start WebHook handler", "err", err)
+		}
+	}()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -68,9 +74,9 @@ func main() {
 		User:            *user,
 		RepoInterval:    *repoInterval,
 		StarInterval:    *starInterval,
-		Logger:          l,
+		Logger:          l.With("component", "scanner"),
 		Client:          stars.NewGitHubClient(*githubToken),
-		Store:           &store.Store{DatabasePath: *directory},
+		Store:           repoStore,
 		Notifier:        notifiers,
 		IncludeArchived: *includeArchived,
 	}

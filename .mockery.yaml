@@ -1,0 +1,11 @@
+with-expecter: true
+filename: "{{.InterfaceName}}.go"
+dir: "{{.InterfaceDir}}/mocks"
+mockname: "{{.InterfaceName}}"
+outpkg: "mocks"
+issue-845-fix: True
+packages:
+  github.com/clambin/github-stars/internal/webhook:
+    interfaces:
+      Store:
+      Notifier:

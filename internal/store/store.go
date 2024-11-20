@@ -16,6 +16,13 @@ type Store struct {
 	lock         sync.RWMutex
 }
 
+func New(databasePath string) *Store {
+	return &Store{
+		DatabasePath: databasePath,
+		Repos:        make(map[string]RepoStars),
+	}
+}
+
 type RepoStars map[string]RepoStar
 
 func (r RepoStars) Equals(o RepoStars) bool {
@@ -64,6 +71,7 @@ func (s *Store) Len() int {
 }
 
 // SetStargazers sets the stargazers for a repo and returns the new stargazers. It returns an error if it failed to save the store to disk.
+// TODO: pass *github.Repository, not the repo name
 func (s *Store) SetStargazers(repo string, stargazers []*github.Stargazer) ([]*github.Stargazer, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -74,9 +82,6 @@ func (s *Store) SetStargazers(repo string, stargazers []*github.Stargazer) ([]*g
 
 	var err error
 	if !oldRepoStars.Equals(newRepoStars) {
-		if s.Repos == nil {
-			s.Repos = make(map[string]RepoStars)
-		}
 		s.Repos[repo] = newRepoStars
 		err = s.save()
 	}
@@ -101,4 +106,38 @@ func makeRepoStars(stargazers []*github.Stargazer) RepoStars {
 		gazers[stargazer.GetUser().GetLogin()] = RepoStar{StarredAt: stargazer.GetStarredAt().Time}
 	}
 	return gazers
+}
+
+// Add adds a stargazer to a repo. Returns true if the stargazer is new. Error indicates a problem saving the store to disk,
+func (s *Store) Add(repo *github.Repository, stargazer *github.Stargazer) (bool, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	r, ok := s.Repos[repo.GetName()]
+	if !ok {
+		r = make(RepoStars)
+	}
+	_, ok = r[stargazer.GetUser().GetLogin()]
+	if ok {
+		return false, nil
+	}
+	r[stargazer.GetUser().GetLogin()] = RepoStar{StarredAt: time.Now()}
+	s.Repos[repo.GetName()] = r
+	return true, s.save()
+}
+
+// Delete removes a stargazer from a repo. Returns true if the stargazer was present. Error indicates a problem saving the store to disk,
+func (s *Store) Delete(repo *github.Repository, stargazer *github.Stargazer) (bool, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	r, ok := s.Repos[repo.GetName()]
+	if !ok {
+		return false, nil
+	}
+	_, ok = r[stargazer.GetUser().GetLogin()]
+	if !ok {
+		return false, nil
+	}
+	delete(r, stargazer.GetUser().GetLogin())
+	s.Repos[repo.GetName()] = r
+	return true, s.save()
 }

@@ -20,7 +20,7 @@ func TestRepoScanner(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
 
-	starStore := store.Store{DatabasePath: tmpDir}
+	starStore := store.New(tmpDir)
 	notifier := fakeNotifier{}
 	scanner := RepoScanner{
 		User:         "foo",
@@ -31,7 +31,7 @@ func TestRepoScanner(t *testing.T) {
 			Repositories: fakeRepositories{},
 			Activity:     fakeActivity{},
 		},
-		Store:    &starStore,
+		Store:    starStore,
 		Notifier: &notifier,
 	}
 
