@@ -71,18 +71,18 @@ func (s *Store) Len() int {
 }
 
 // SetStargazers sets the stargazers for a repo and returns the new stargazers. It returns an error if it failed to save the store to disk.
-// TODO: pass *github.Repository, not the repo name
-func (s *Store) SetStargazers(repo string, stargazers []*github.Stargazer) ([]*github.Stargazer, error) {
+func (s *Store) SetStargazers(repo *github.Repository, stargazers []*github.Stargazer) ([]*github.Stargazer, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	oldRepoStars := s.Repos[repo]
+	repoFullName := repo.GetFullName()
+	oldRepoStars := s.Repos[repoFullName]
 	newStargazers := s.getNewStargazers(oldRepoStars, stargazers)
 	newRepoStars := makeRepoStars(stargazers)
 
 	var err error
 	if !oldRepoStars.Equals(newRepoStars) {
-		s.Repos[repo] = newRepoStars
+		s.Repos[repoFullName] = newRepoStars
 		err = s.save()
 	}
 	return newStargazers, err

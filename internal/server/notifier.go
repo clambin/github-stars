@@ -1,4 +1,4 @@
-package stars
+package server
 
 import (
 	"github.com/google/go-github/v66/github"
@@ -7,10 +7,6 @@ import (
 	"strconv"
 	"strings"
 )
-
-type Notifier interface {
-	Notify(repository *github.Repository, gazers []*github.Stargazer)
-}
 
 var _ Notifier = Notifiers{}
 

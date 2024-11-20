@@ -134,6 +134,65 @@ func (_c *Store_Delete_Call) RunAndReturn(run func(*github.Repository, *github.S
 	return _c
 }
 
+// SetStargazers provides a mock function with given fields: repository, stargazers
+func (_m *Store) SetStargazers(repository *github.Repository, stargazers []*github.Stargazer) ([]*github.Stargazer, error) {
+	ret := _m.Called(repository, stargazers)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetStargazers")
+	}
+
+	var r0 []*github.Stargazer
+	var r1 error
+	if rf, ok := ret.Get(0).(func(*github.Repository, []*github.Stargazer) ([]*github.Stargazer, error)); ok {
+		return rf(repository, stargazers)
+	}
+	if rf, ok := ret.Get(0).(func(*github.Repository, []*github.Stargazer) []*github.Stargazer); ok {
+		r0 = rf(repository, stargazers)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*github.Stargazer)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(*github.Repository, []*github.Stargazer) error); ok {
+		r1 = rf(repository, stargazers)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Store_SetStargazers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetStargazers'
+type Store_SetStargazers_Call struct {
+	*mock.Call
+}
+
+// SetStargazers is a helper method to define mock.On call
+//   - repository *github.Repository
+//   - stargazers []*github.Stargazer
+func (_e *Store_Expecter) SetStargazers(repository interface{}, stargazers interface{}) *Store_SetStargazers_Call {
+	return &Store_SetStargazers_Call{Call: _e.mock.On("SetStargazers", repository, stargazers)}
+}
+
+func (_c *Store_SetStargazers_Call) Run(run func(repository *github.Repository, stargazers []*github.Stargazer)) *Store_SetStargazers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*github.Repository), args[1].([]*github.Stargazer))
+	})
+	return _c
+}
+
+func (_c *Store_SetStargazers_Call) Return(_a0 []*github.Stargazer, _a1 error) *Store_SetStargazers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Store_SetStargazers_Call) RunAndReturn(run func(*github.Repository, []*github.Stargazer) ([]*github.Stargazer, error)) *Store_SetStargazers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewStore creates a new instance of Store. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewStore(t interface {

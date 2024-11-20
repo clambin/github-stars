@@ -1,4 +1,4 @@
-package webhook
+package server
 
 import (
 	"bytes"
@@ -19,16 +19,7 @@ type Webhook struct {
 	Logger    *slog.Logger
 }
 
-type Store interface {
-	Add(repo *github.Repository, stargazer *github.Stargazer) (bool, error)
-	Delete(repo *github.Repository, stargazer *github.Stargazer) (bool, error)
-}
-
 var _ Store = &store.Store{}
-
-type Notifier interface {
-	Notify(repository *github.Repository, gazers []*github.Stargazer)
-}
 
 func (l *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Parse the webhook payload

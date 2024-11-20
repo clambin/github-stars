@@ -1,11 +1,11 @@
-package webhook
+package server
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"github.com/clambin/github-stars/internal/server/mocks"
 	"github.com/clambin/github-stars/internal/testutils"
-	"github.com/clambin/github-stars/internal/webhook/mocks"
 	"github.com/google/go-github/v66/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

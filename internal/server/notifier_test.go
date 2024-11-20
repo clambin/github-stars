@@ -1,6 +1,7 @@
-package stars
+package server
 
 import (
+	"github.com/clambin/github-stars/internal/testutils"
 	"github.com/google/go-github/v66/github"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -8,13 +9,13 @@ import (
 
 func TestSlackWebHookNotifier_makeMessage(t *testing.T) {
 	repo := &github.Repository{
-		FullName: ConstP("foo/bar"),
-		HTMLURL:  ConstP("https://example.com/foo/bar"),
+		FullName: testutils.Ptr("foo/bar"),
+		HTMLURL:  testutils.Ptr("https://example.com/foo/bar"),
 	}
 	gazers := []*github.Stargazer{{
 		User: &github.User{
-			Login:   ConstP("user1"),
-			HTMLURL: ConstP("https://example.com/users/user1"),
+			Login:   testutils.Ptr("user1"),
+			HTMLURL: testutils.Ptr("https://example.com/users/user1"),
 		},
 	}}
 
@@ -24,8 +25,8 @@ func TestSlackWebHookNotifier_makeMessage(t *testing.T) {
 
 	gazers = append(gazers, &github.Stargazer{
 		User: &github.User{
-			Login:   ConstP("user2"),
-			HTMLURL: ConstP("https://example.com/users/user2"),
+			Login:   testutils.Ptr("user2"),
+			HTMLURL: testutils.Ptr("https://example.com/users/user2"),
 		},
 	})
 	text = s.makeMessage(repo, gazers)

@@ -34,7 +34,7 @@ func TestStore_SetStargazers(t *testing.T) {
 		{User: &github.User{Login: testutils.Ptr("user2")}, StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 9, 0, 0, 0, time.UTC)}},
 		{User: &github.User{Login: testutils.Ptr("user3")}, StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 9, 30, 0, 0, time.UTC)}},
 	}
-	newStargazers, err := s.SetStargazers("foo/foo", fetched)
+	newStargazers, err := s.SetStargazers(&github.Repository{FullName: testutils.Ptr("foo/foo")}, fetched)
 	assert.NoError(t, err)
 	// expected new: user3
 	wantNewStargazers := []*github.Stargazer{
