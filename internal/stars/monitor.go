@@ -122,8 +122,9 @@ func (p *Processor) pollStargazers(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	newStargazers, err := p.Store.SetStargazers(p.Repository.GetFullName(), stargazers)
-	if err != nil && newStargazers != nil {
+	fn := p.Repository.GetFullName()
+	newStargazers, err := p.Store.SetStargazers(fn, stargazers)
+	if err == nil && len(newStargazers) > 0 {
 		p.Notifier.Notify(p.Repository, stargazers)
 	}
 	return err

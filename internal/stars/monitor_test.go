@@ -3,6 +3,7 @@ package stars
 import (
 	"context"
 	"github.com/clambin/github-stars/internal/store"
+	"github.com/google/go-github/v66/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -20,6 +21,7 @@ func TestRepoScanner(t *testing.T) {
 	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
 
 	starStore := store.Store{DatabasePath: tmpDir}
+	notifier := fakeNotifier{}
 	scanner := RepoScanner{
 		User:         "foo",
 		RepoInterval: time.Hour,
@@ -30,7 +32,7 @@ func TestRepoScanner(t *testing.T) {
 			Activity:     fakeActivity{},
 		},
 		Store:    &starStore,
-		Notifier: SLogNotifier{Logger: discardLogger},
+		Notifier: &notifier,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -53,4 +55,21 @@ func TestRepoScanner(t *testing.T) {
 		},
 	}
 	assert.Equal(t, want, starStore.Repos)
+
+	notifications, ok := notifier.rcvd["foo/foo"]
+	assert.True(t, ok)
+	assert.Len(t, notifications, 2)
+}
+
+var _ Notifier = &fakeNotifier{}
+
+type fakeNotifier struct {
+	rcvd map[string][]*github.Stargazer
+}
+
+func (f *fakeNotifier) Notify(repository *github.Repository, gazers []*github.Stargazer) {
+	if f.rcvd == nil {
+		f.rcvd = make(map[string][]*github.Stargazer)
+	}
+	f.rcvd[repository.GetFullName()] = gazers
 }
