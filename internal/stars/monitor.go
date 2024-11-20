@@ -3,6 +3,7 @@ package stars
 import (
 	"context"
 	"fmt"
+	"github.com/clambin/github-stars/internal/store"
 	"github.com/google/go-github/v66/github"
 	"golang.org/x/sync/errgroup"
 	"log/slog"
@@ -16,7 +17,7 @@ type RepoScanner struct {
 	StarInterval    time.Duration
 	Logger          *slog.Logger
 	Client          *Client
-	Store           *Store
+	Store           *store.Store
 	Notifier        Notifier
 	lock            sync.Mutex
 	processors      map[string]struct{}
@@ -93,7 +94,7 @@ type Processor struct {
 	Repository *github.Repository
 	Interval   time.Duration
 	Client     *Client
-	Store      *Store
+	Store      *store.Store
 	Notifier   Notifier
 	Logger     *slog.Logger
 }
@@ -104,7 +105,7 @@ func (p *Processor) Run(ctx context.Context) {
 	ticker := time.NewTicker(p.Interval)
 	defer ticker.Stop()
 	for {
-		if err := p.getStargazers(ctx); err != nil {
+		if err := p.pollStargazers(ctx); err != nil {
 			p.Logger.Error("failed to get star gazers", "err", err)
 		}
 
@@ -116,23 +117,14 @@ func (p *Processor) Run(ctx context.Context) {
 	}
 }
 
-func (p *Processor) getStargazers(ctx context.Context) error {
-	var newStarGazers []*github.Stargazer
-	for starGazer, err := range p.Client.GetStarGazers(ctx, p.User, p.Repository.GetName()) {
-		if err != nil {
-			return err
-		}
-		added, err := p.Store.Add(p.Repository, starGazer)
-		if err != nil {
-			return err
-		}
-		if added {
-			newStarGazers = append(newStarGazers, starGazer)
-		}
+func (p *Processor) pollStargazers(ctx context.Context) error {
+	stargazers, err := p.Client.GetStarGazers(ctx, p.User, p.Repository.GetName())
+	if err != nil {
+		return err
 	}
-	if len(newStarGazers) == 0 {
-		return nil
+	newStargazers, err := p.Store.SetStargazers(p.Repository.GetFullName(), stargazers)
+	if err != nil && newStargazers != nil {
+		p.Notifier.Notify(p.Repository, stargazers)
 	}
-	p.Notifier.Notify(p.Repository, newStarGazers)
-	return nil
+	return err
 }

@@ -2,8 +2,9 @@ name: test
 
 on:
   push:
-    branches:
+    ignore-branches:
       - main
+      - cleanup
   pull_request_target:
 
 jobs:

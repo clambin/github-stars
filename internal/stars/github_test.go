@@ -25,14 +25,9 @@ func TestClient_GetUserRepoNames(t *testing.T) {
 func TestClient_GetUserStars(t *testing.T) {
 	client := Client{Activity: fakeActivity{}}
 
-	var count int
-	for _, err := range client.GetStarGazers(context.Background(), "", "foo") {
-		if err != nil {
-			t.Fatal(err)
-		}
-		count++
-	}
-	assert.Equal(t, 2, count)
+	starGazers, err := client.GetStarGazers(context.Background(), "", "foo")
+	assert.NoError(t, err)
+	assert.Len(t, starGazers, 2)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

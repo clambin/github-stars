@@ -2,6 +2,7 @@ package stars
 
 import (
 	"context"
+	"github.com/clambin/github-stars/internal/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -18,7 +19,7 @@ func TestRepoScanner(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
 
-	store := Store{DatabasePath: tmpDir}
+	starStore := store.Store{DatabasePath: tmpDir}
 	scanner := RepoScanner{
 		User:         "foo",
 		RepoInterval: time.Hour,
@@ -28,7 +29,7 @@ func TestRepoScanner(t *testing.T) {
 			Repositories: fakeRepositories{},
 			Activity:     fakeActivity{},
 		},
-		Store:    &store,
+		Store:    &starStore,
 		Notifier: SLogNotifier{Logger: discardLogger},
 	}
 
@@ -39,17 +40,17 @@ func TestRepoScanner(t *testing.T) {
 	}()
 
 	assert.Eventually(t, func() bool {
-		return store.Len() > 0
+		return starStore.Len() > 0
 	}, time.Second, time.Millisecond*100)
 
 	cancel()
 	assert.NoError(t, <-errCh)
 
-	want := map[string]repository{
+	want := map[string]store.RepoStars{
 		"foo/foo": {
 			"user1": {StarredAt: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
 			"user2": {StarredAt: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
 		},
 	}
-	assert.Equal(t, want, store.Repos)
+	assert.Equal(t, want, starStore.Repos)
 }

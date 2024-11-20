@@ -52,24 +52,18 @@ func (c Client) GetUserRepoNames(ctx context.Context, user string) iter.Seq2[*gi
 	}
 }
 
-func (c Client) GetStarGazers(ctx context.Context, user string, repo string) iter.Seq2[*github.Stargazer, error] {
-	return func(yield func(*github.Stargazer, error) bool) {
-		listOptions := github.ListOptions{PerPage: recordsPerPage}
-		for {
-			page, resp, err := c.Activity.ListStargazers(ctx, user, repo, &listOptions)
-			if err != nil {
-				yield(nil, err)
-				return
-			}
-			for _, gazer := range page {
-				if !yield(gazer, err) {
-					return
-				}
-			}
-			if resp.NextPage == 0 {
-				return
-			}
-			listOptions.Page = resp.NextPage
+func (c Client) GetStarGazers(ctx context.Context, user string, repo string) ([]*github.Stargazer, error) {
+	var starGazers []*github.Stargazer
+	listOptions := github.ListOptions{PerPage: recordsPerPage}
+	for {
+		page, resp, err := c.Activity.ListStargazers(ctx, user, repo, &listOptions)
+		if err != nil {
+			return nil, err
 		}
+		starGazers = append(starGazers, page...)
+		if resp.NextPage == 0 {
+			return starGazers, nil
+		}
+		listOptions.Page = resp.NextPage
 	}
 }
