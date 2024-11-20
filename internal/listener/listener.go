@@ -42,6 +42,8 @@ func (l *Listener) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	l.Logger.Debug("received request", "header", r.Header, "body", string(body))
+
 	// Verify webhook signature
 	signature := r.Header.Get("X-Hub-Signature-256")
 	if !l.verifySignature(body, signature) {
