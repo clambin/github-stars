@@ -20,7 +20,8 @@ var (
 	version = "change-me"
 
 	debug           = flag.Bool("debug", false, "Enable debug mode")
-	webHookAddr     = flag.String("web-hook-addr", ":8080", "Address for the webhook server")
+	webHookAddr     = flag.String("webhook.addr", ":8080", "Address for the webhook server")
+	webHookSecret   = flag.String("webhook.secret", "todo", "Secret for the webhook server")
 	addr            = flag.String("addr", ":9091", "Prometheus handler address")
 	githubToken     = flag.String("github.token", "", "GitHub API githubToken")
 	slackWebHook    = flag.String("slack.webHook", "", "Slack WebHook URL")
@@ -56,13 +57,13 @@ func main() {
 
 	repoStore := store.New(*directory)
 
-	lst := webhook.Webhook{
-		Store:  repoStore,
-		Logger: l.With("component", "webhook"),
-	}
-
+	// TODO: run Scanner first. After that, start the Webhook to listen for new stars (in the main goroutine).
 	go func() {
-		if err := http.ListenAndServe(*webHookAddr, webhook.GitHubAuth("todo")(&lst)); !errors.Is(err, http.ErrServerClosed) {
+		lst := webhook.Webhook{
+			Store:  repoStore,
+			Logger: l.With("component", "webhook"),
+		}
+		if err := http.ListenAndServe(*webHookAddr, webhook.GitHubAuth(*webHookSecret)(&lst)); !errors.Is(err, http.ErrServerClosed) {
 			l.Warn("failed to start WebHook handler", "err", err)
 		}
 	}()
