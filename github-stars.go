@@ -19,10 +19,10 @@ var (
 	version = "change-me"
 
 	debug           = flag.Bool("debug", false, "Enable debug mode")
-	webHookAddr     = flag.String("webhook.addr", ":8080", "Address for the webhook server")
-	webHookSecret   = flag.String("webhook.secret", "todo", "Secret for the webhook server")
-	addr            = flag.String("addr", ":9091", "Prometheus handler address")
 	githubToken     = flag.String("github.token", "", "GitHub API githubToken")
+	webHookAddr     = flag.String("github.webhook.addr", ":8080", "Address for the webhook server")
+	webHookSecret   = flag.String("github.webhook.secret", "todo", "Secret for the webhook server")
+	addr            = flag.String("addr", ":9091", "Prometheus handler address")
 	slackWebHook    = flag.String("slack.webHook", "", "Slack WebHook URL")
 	directory       = flag.String("directory", ".", "Database directory")
 	user            = flag.String("user", "", "GitHub username")
@@ -73,8 +73,14 @@ func main() {
 
 	l.Info("starting webhook handler")
 
-	h := server.Webhook{Store: repoStore, Logger: l.With("component", "webhook")}
-	if err = http.ListenAndServe(*webHookAddr, server.GitHubAuth(*webHookSecret)(&h)); !errors.Is(err, http.ErrServerClosed) {
+	h := server.GitHubAuth(*webHookSecret)(
+		&server.Webhook{
+			Store:  repoStore,
+			Logger: l.With("component", "webhook"),
+		},
+	)
+
+	if err = http.ListenAndServe(*webHookAddr, h); !errors.Is(err, http.ErrServerClosed) {
 		l.Error("failed to start WebHook handler", "err", err)
 	}
 }
