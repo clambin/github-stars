@@ -19,7 +19,8 @@ type Client struct {
 	Activity
 }
 
-func New(client *github.Client) *Client {
+func NewGitHubClient(token string) *Client {
+	client := github.NewClient(nil).WithAuthToken(token)
 	return &Client{
 		Repositories: client.Repositories,
 		Activity:     client.Activity,
