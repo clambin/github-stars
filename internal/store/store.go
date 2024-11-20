@@ -68,7 +68,7 @@ func (s *Store) SetStargazers(repo string, stargazers []*github.Stargazer) ([]*g
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	oldRepoStars, _ := s.Repos[repo]
+	oldRepoStars := s.Repos[repo]
 	newStargazers := s.getNewStargazers(oldRepoStars, stargazers)
 	newRepoStars := makeRepoStars(stargazers)
 
