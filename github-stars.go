@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"github.com/clambin/github-stars/internal/listener"
 	"github.com/clambin/github-stars/internal/stars"
 	"github.com/clambin/github-stars/internal/store"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -19,6 +20,7 @@ var (
 	version = "change-me"
 
 	debug           = flag.Bool("debug", false, "Enable debug mode")
+	webHookAddr     = flag.String("web-hook-addr", ":8080", "Address for the webhook server")
 	addr            = flag.String("addr", ":9091", "Prometheus handler address")
 	githubToken     = flag.String("github.token", "", "GitHub API githubToken")
 	slackWebHook    = flag.String("slack.webHook", "", "Slack WebHook URL")
@@ -40,8 +42,15 @@ func main() {
 
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {
-		if err := http.ListenAndServe(*addr, nil); !errors.Is(err, http.ErrServerClosed) {
+		if err := http.ListenAndServe(*webHookAddr, nil); !errors.Is(err, http.ErrServerClosed) {
 			l.Warn("failed to start Prometheus handler", "err", err)
+		}
+	}()
+
+	webhook := listener.Listener{Secret: "todo", Logger: l}
+	go func() {
+		if err := http.ListenAndServe(*addr, &webhook); !errors.Is(err, http.ErrServerClosed) {
+			l.Warn("failed to start WebHook handler", "err", err)
 		}
 	}()
 
