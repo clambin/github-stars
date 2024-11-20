@@ -11,42 +11,6 @@ import (
 	"time"
 )
 
-func TestRepoStars_Equals(t *testing.T) {
-	tests := []struct {
-		name string
-		old  RepoStars
-		new  RepoStars
-		want assert.BoolAssertionFunc
-	}{
-		{
-			name: "empty",
-			want: assert.True,
-		},
-		{
-			name: "different size",
-			old:  RepoStars{"foo": {StarredAt: time.Date(2024, time.November, 20, 11, 0, 0, 0, time.UTC)}},
-			want: assert.False,
-		},
-		{
-			name: "same size, different stars",
-			old:  RepoStars{"foo": {StarredAt: time.Date(2024, time.November, 20, 11, 0, 0, 0, time.UTC)}},
-			new:  RepoStars{"bar": {StarredAt: time.Date(2024, time.November, 20, 11, 0, 0, 0, time.UTC)}},
-			want: assert.False,
-		},
-		{
-			name: "equal",
-			old:  RepoStars{"foo": {StarredAt: time.Date(2024, time.November, 20, 11, 0, 0, 0, time.UTC)}},
-			new:  RepoStars{"foo": {StarredAt: time.Date(2024, time.November, 20, 11, 0, 0, 0, time.UTC)}},
-			want: assert.True,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.want(t, tt.old.Equals(tt.new))
-		})
-	}
-}
-
 func TestStore_SetStargazers(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "")
 	require.NoError(t, err)
@@ -106,7 +70,7 @@ func TestStore_Add_Delete(t *testing.T) {
 	s := New(tmpDir)
 	assert.Error(t, s.Load())
 
-	repo := github.Repository{Name: testutils.Ptr("repo")}
+	repo := github.Repository{Name: testutils.Ptr("bar"), FullName: testutils.Ptr("foo/bar")}
 	stargazer := github.Stargazer{
 		User:      &github.User{Login: testutils.Ptr("user")},
 		StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 21, 30, 0, 0, time.UTC)},
@@ -116,19 +80,59 @@ func TestStore_Add_Delete(t *testing.T) {
 	added, err := s.Add(&repo, &stargazer)
 	require.NoError(t, err)
 	assert.True(t, added)
+	assert.Contains(t, s.Repos["foo/bar"], "user")
 
 	// Add an existing stargazer
 	added, err = s.Add(&repo, &stargazer)
 	require.NoError(t, err)
 	assert.False(t, added)
+	assert.Contains(t, s.Repos["foo/bar"], "user")
 
 	// Delete an existing stargazer
-	added, err = s.Delete(&repo, &stargazer)
+	deleted, err := s.Delete(&repo, &stargazer)
 	require.NoError(t, err)
-	assert.True(t, added)
+	assert.True(t, deleted)
+	assert.NotContains(t, s.Repos["foo/bar"], "user")
 
 	// Delete an non-existing stargazer
-	added, err = s.Delete(&repo, &stargazer)
+	deleted, err = s.Delete(&repo, &stargazer)
 	require.NoError(t, err)
-	assert.False(t, added)
+	assert.False(t, deleted)
+	assert.NotContains(t, s.Repos["foo/bar"], "user")
+}
+
+func TestRepoStars_Equals(t *testing.T) {
+	tests := []struct {
+		name string
+		old  RepoStars
+		new  RepoStars
+		want assert.BoolAssertionFunc
+	}{
+		{
+			name: "empty",
+			want: assert.True,
+		},
+		{
+			name: "different size",
+			old:  RepoStars{"foo": {StarredAt: time.Date(2024, time.November, 20, 11, 0, 0, 0, time.UTC)}},
+			want: assert.False,
+		},
+		{
+			name: "same size, different stars",
+			old:  RepoStars{"foo": {StarredAt: time.Date(2024, time.November, 20, 11, 0, 0, 0, time.UTC)}},
+			new:  RepoStars{"bar": {StarredAt: time.Date(2024, time.November, 20, 11, 0, 0, 0, time.UTC)}},
+			want: assert.False,
+		},
+		{
+			name: "equal",
+			old:  RepoStars{"foo": {StarredAt: time.Date(2024, time.November, 20, 11, 0, 0, 0, time.UTC)}},
+			new:  RepoStars{"foo": {StarredAt: time.Date(2024, time.November, 20, 11, 0, 0, 0, time.UTC)}},
+			want: assert.True,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.want(t, tt.old.Equals(tt.new))
+		})
+	}
 }

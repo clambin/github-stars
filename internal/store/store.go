@@ -112,7 +112,7 @@ func makeRepoStars(stargazers []*github.Stargazer) RepoStars {
 func (s *Store) Add(repo *github.Repository, stargazer *github.Stargazer) (bool, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	r, ok := s.Repos[repo.GetName()]
+	r, ok := s.Repos[repo.GetFullName()]
 	if !ok {
 		r = make(RepoStars)
 	}
@@ -121,7 +121,7 @@ func (s *Store) Add(repo *github.Repository, stargazer *github.Stargazer) (bool,
 		return false, nil
 	}
 	r[stargazer.GetUser().GetLogin()] = RepoStar{StarredAt: time.Now()}
-	s.Repos[repo.GetName()] = r
+	s.Repos[repo.GetFullName()] = r
 	return true, s.save()
 }
 
@@ -129,7 +129,7 @@ func (s *Store) Add(repo *github.Repository, stargazer *github.Stargazer) (bool,
 func (s *Store) Delete(repo *github.Repository, stargazer *github.Stargazer) (bool, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	r, ok := s.Repos[repo.GetName()]
+	r, ok := s.Repos[repo.GetFullName()]
 	if !ok {
 		return false, nil
 	}
@@ -138,6 +138,6 @@ func (s *Store) Delete(repo *github.Repository, stargazer *github.Stargazer) (bo
 		return false, nil
 	}
 	delete(r, stargazer.GetUser().GetLogin())
-	s.Repos[repo.GetName()] = r
+	s.Repos[repo.GetFullName()] = r
 	return true, s.save()
 }
