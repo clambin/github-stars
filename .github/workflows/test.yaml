@@ -2,7 +2,7 @@ name: test
 
 on:
   push:
-    ignore-branches:
+    branches-ignore:
       - main
       - cleanup
   pull_request_target:
