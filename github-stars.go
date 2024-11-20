@@ -63,7 +63,7 @@ func main() {
 		l.Warn("database not found. possibly this is a new installation", "err", err)
 	}
 
-	l.Debug("scanning repositories")
+	l.Info("scanning repositories")
 
 	// Scan repos and populate the database. This catches up any stars given while we were down.
 	err := server.Scan(ctx, *user, client, repoStore, notifiers, *includeArchived, l.With("component", "scanner"))
@@ -71,7 +71,7 @@ func main() {
 		l.Error("failed to scan github repositories", "err", err)
 	}
 
-	l.Debug("starting webhook handler")
+	l.Info("starting webhook handler")
 
 	h := server.Webhook{Store: repoStore, Logger: l.With("component", "webhook")}
 	if err = http.ListenAndServe(*webHookAddr, server.GitHubAuth(*webHookSecret)(&h)); !errors.Is(err, http.ErrServerClosed) {
