@@ -6,78 +6,59 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/clambin/github-stars/internal/store"
 	"github.com/google/go-github/v66/github"
 	"io"
 	"log/slog"
 	"net/http"
 )
 
-// A GitHubWebhook receives events from a Slack App. The current implementation is limited to StarEvents.
-// Additionally, GitHubWebhook supports a readiness probe (/readyz), so an orchestrator can verify that
-// the server is ready to process requests.
-type GitHubWebhook struct {
-	Notifiers Notifier
-	Store     Store
-	Logger    *slog.Logger
-}
+// A GithubWebHookHandler receives events from a Slack App. The current implementation is limited to StarEvents.
+func GithubWebHookHandler(notifier Notifier, store Store, l *slog.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Parse the webhook payload
+		var event github.StarEvent
+		if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
+			l.Error("Unable to parse StarEvent", "err", err)
+			http.Error(w, "Unable to parse payload", http.StatusInternalServerError)
+			return
+		}
 
-var _ Store = &store.Store{}
+		stargazer := github.Stargazer{
+			StarredAt: event.StarredAt,
+			User:      event.Sender,
+		}
 
-func (g *GitHubWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/readyz":
-		// Readiness probe
+		// Handle the "star" event
+		switch event.GetAction() {
+		case "created":
+			l.Debug("adding new stargazer", "repo", event.GetRepo().GetName(), "user", event.GetSender().GetLogin())
+			added, err := store.Add(event.GetRepo(), &stargazer)
+			if err != nil {
+				l.Error("Unable to store star", "err", err)
+				http.Error(w, "db error", http.StatusInternalServerError)
+				return
+			}
+			if added && notifier != nil {
+				notifier.Notify(event.GetRepo(), []*github.Stargazer{&stargazer}, true)
+			}
+		case "deleted":
+			l.Debug("removing a stargazer", "repo", event.GetRepo().GetName(), "user", event.GetSender().GetLogin())
+			deleted, err := store.Delete(event.GetRepo(), &stargazer)
+			if err != nil {
+				l.Error("Unable to store star", "err", err)
+				http.Error(w, "db error", http.StatusInternalServerError)
+				return
+			}
+			if deleted && notifier != nil {
+				notifier.Notify(event.GetRepo(), []*github.Stargazer{&stargazer}, false)
+			}
+		default:
+			l.Warn("Unsupported action", "action", event.GetAction())
+			http.Error(w, "Unsupported action: "+event.GetAction(), http.StatusBadRequest)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
-	default:
-		g.handleStarEvent(w, r)
-	}
-}
-
-func (g *GitHubWebhook) handleStarEvent(w http.ResponseWriter, r *http.Request) {
-	// Parse the webhook payload
-	var event github.StarEvent
-	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
-		g.Logger.Error("Unable to parse StarEvent", "err", err)
-		http.Error(w, "Unable to parse payload", http.StatusInternalServerError)
-		return
-	}
-
-	stargazer := github.Stargazer{
-		StarredAt: event.StarredAt,
-		User:      event.Sender,
-	}
-
-	// Handle the "star" event
-	switch event.GetAction() {
-	case "created":
-		g.Logger.Debug("adding new stargazer", "repo", event.GetRepo().GetName(), "user", event.GetSender().GetLogin())
-		added, err := g.Store.Add(event.GetRepo(), &stargazer)
-		if err != nil {
-			g.Logger.Error("Unable to store star", "err", err)
-			http.Error(w, "db error", http.StatusInternalServerError)
-			return
-		}
-		if added && g.Notifiers != nil {
-			g.Notifiers.Notify(event.GetRepo(), []*github.Stargazer{&stargazer})
-		}
-	case "deleted":
-		g.Logger.Debug("removing a stargazer", "repo", event.GetRepo().GetName(), "user", event.GetSender().GetLogin())
-		deleted, err := g.Store.Delete(event.GetRepo(), &stargazer)
-		if err != nil {
-			g.Logger.Error("Unable to store star", "err", err)
-			http.Error(w, "db error", http.StatusInternalServerError)
-			return
-		}
-		if deleted && g.Notifiers != nil {
-			g.Notifiers.Notify(event.GetRepo(), []*github.Stargazer{&stargazer})
-		}
-	default:
-		g.Logger.Warn("Unsupported action", "action", event.GetAction())
-		http.Error(w, "Unsupported action: "+event.GetAction(), http.StatusBadRequest)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
+	})
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -20,9 +20,9 @@ func (_m *Notifier) EXPECT() *Notifier_Expecter {
 	return &Notifier_Expecter{mock: &_m.Mock}
 }
 
-// Notify provides a mock function with given fields: repository, gazers
-func (_m *Notifier) Notify(repository *github.Repository, gazers []*github.Stargazer) {
-	_m.Called(repository, gazers)
+// Notify provides a mock function with given fields: repository, gazers, added
+func (_m *Notifier) Notify(repository *github.Repository, gazers []*github.Stargazer, added bool) {
+	_m.Called(repository, gazers, added)
 }
 
 // Notifier_Notify_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Notify'
@@ -33,13 +33,14 @@ type Notifier_Notify_Call struct {
 // Notify is a helper method to define mock.On call
 //   - repository *github.Repository
 //   - gazers []*github.Stargazer
-func (_e *Notifier_Expecter) Notify(repository interface{}, gazers interface{}) *Notifier_Notify_Call {
-	return &Notifier_Notify_Call{Call: _e.mock.On("Notify", repository, gazers)}
+//   - added bool
+func (_e *Notifier_Expecter) Notify(repository interface{}, gazers interface{}, added interface{}) *Notifier_Notify_Call {
+	return &Notifier_Notify_Call{Call: _e.mock.On("Notify", repository, gazers, added)}
 }
 
-func (_c *Notifier_Notify_Call) Run(run func(repository *github.Repository, gazers []*github.Stargazer)) *Notifier_Notify_Call {
+func (_c *Notifier_Notify_Call) Run(run func(repository *github.Repository, gazers []*github.Stargazer, added bool)) *Notifier_Notify_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*github.Repository), args[1].([]*github.Stargazer))
+		run(args[0].(*github.Repository), args[1].([]*github.Stargazer), args[2].(bool))
 	})
 	return _c
 }
@@ -49,7 +50,7 @@ func (_c *Notifier_Notify_Call) Return() *Notifier_Notify_Call {
 	return _c
 }
 
-func (_c *Notifier_Notify_Call) RunAndReturn(run func(*github.Repository, []*github.Stargazer)) *Notifier_Notify_Call {
+func (_c *Notifier_Notify_Call) RunAndReturn(run func(*github.Repository, []*github.Stargazer, bool)) *Notifier_Notify_Call {
 	_c.Call.Return(run)
 	return _c
 }

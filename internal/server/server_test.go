@@ -24,8 +24,8 @@ func TestRun(t *testing.T) {
 	}()
 
 	assert.Eventually(t, func() bool {
-		resp, err := http.Get("http://localhost:8080/")
-		return err == nil && resp.StatusCode == http.StatusUnauthorized
+		resp, err := http.Get("http://localhost:8080/readyz")
+		return err == nil && resp.StatusCode == http.StatusOK
 	}, time.Second, 10*time.Millisecond)
 
 	cancel()

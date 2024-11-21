@@ -54,7 +54,7 @@ func TestScan(t *testing.T) {
 
 	n := mocks.NewNotifier(t)
 	n.EXPECT().
-		Notify(mock.AnythingOfType("*github.Repository"), mock.AnythingOfType("[]*github.Stargazer")).Once()
+		Notify(mock.AnythingOfType("*github.Repository"), mock.AnythingOfType("[]*github.Stargazer"), true).Once()
 
 	l := slog.New(slog.NewTextHandler(io.Discard, nil))
 

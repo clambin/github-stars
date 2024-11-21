@@ -37,7 +37,7 @@ type Store interface {
 }
 
 type Notifier interface {
-	Notify(repository *github.Repository, gazers []*github.Stargazer)
+	Notify(repository *github.Repository, gazers []*github.Stargazer, added bool)
 }
 
 func Run(ctx context.Context, version string, l *slog.Logger) error {
@@ -77,15 +77,14 @@ func runWithClient(ctx context.Context, client Client, version string, l *slog.L
 
 	l.Info("starting webhook handler")
 
+	mux := http.NewServeMux()
+	mux.Handle("/readyz", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	mux.Handle("/", GitHubAuth(*webHookSecret)(
+		GithubWebHookHandler(notifiers, repoStore, l.With("component", "webhook")),
+	))
 	httpServer := &http.Server{
-		Addr: *webHookAddr,
-		Handler: GitHubAuth(*webHookSecret)(
-			&GitHubWebhook{
-				Store:     repoStore,
-				Notifiers: notifiers,
-				Logger:    l.With("component", "webhook"),
-			},
-		),
+		Addr:    *webHookAddr,
+		Handler: mux,
 	}
 
 	errCh := make(chan error)

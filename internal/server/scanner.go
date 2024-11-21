@@ -58,7 +58,7 @@ func scanRepo(
 	}
 	newStargazers, err := s.SetStargazers(r, stargazers)
 	if err == nil && len(newStargazers) > 0 && n != nil {
-		n.Notify(r, newStargazers)
+		n.Notify(r, newStargazers, true)
 	}
 	return err
 }

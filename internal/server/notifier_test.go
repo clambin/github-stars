@@ -20,7 +20,7 @@ func TestSlackWebHookNotifier_makeMessage(t *testing.T) {
 	}}
 
 	var s SlackNotifier
-	text := s.makeMessage(repo, gazers)
+	text := s.makeMessage(repo, gazers, true)
 	assert.Equal(t, `Repo <https://example.com/foo/bar|foo/bar> received a star from <https://example.com/users/user1|@user1>`, text)
 
 	gazers = append(gazers, &github.Stargazer{
@@ -29,6 +29,6 @@ func TestSlackWebHookNotifier_makeMessage(t *testing.T) {
 			HTMLURL: testutils.Ptr("https://example.com/users/user2"),
 		},
 	})
-	text = s.makeMessage(repo, gazers)
+	text = s.makeMessage(repo, gazers, true)
 	assert.Equal(t, `Repo <https://example.com/foo/bar|foo/bar> received a star from 2 users: <https://example.com/users/user1|@user1>, <https://example.com/users/user2|@user2>`, text)
 }

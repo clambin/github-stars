@@ -36,7 +36,7 @@ func TestWebhook(t *testing.T) {
 			},
 			mocks: func(s *mocks.Store, n *mocks.Notifier) {
 				s.EXPECT().Add(mock.AnythingOfType("*github.Repository"), mock.AnythingOfType("*github.Stargazer")).Return(true, nil).Once()
-				n.EXPECT().Notify(mock.AnythingOfType("*github.Repository"), mock.AnythingOfType("[]*github.Stargazer")).Return().Once()
+				n.EXPECT().Notify(mock.AnythingOfType("*github.Repository"), mock.AnythingOfType("[]*github.Stargazer"), true).Return().Once()
 			},
 			want: http.StatusOK,
 		},
@@ -76,7 +76,7 @@ func TestWebhook(t *testing.T) {
 			},
 			mocks: func(s *mocks.Store, n *mocks.Notifier) {
 				s.EXPECT().Delete(mock.AnythingOfType("*github.Repository"), mock.AnythingOfType("*github.Stargazer")).Return(true, nil).Once()
-				n.EXPECT().Notify(mock.AnythingOfType("*github.Repository"), mock.AnythingOfType("[]*github.Stargazer")).Return().Once()
+				n.EXPECT().Notify(mock.AnythingOfType("*github.Repository"), mock.AnythingOfType("[]*github.Stargazer"), false).Return().Once()
 			},
 			want: http.StatusOK,
 		},
@@ -106,11 +106,6 @@ func TestWebhook(t *testing.T) {
 			},
 			want: http.StatusOK,
 		},
-		{
-			name: "readiness probe",
-			path: "/readyz",
-			want: http.StatusOK,
-		},
 	}
 
 	for _, tt := range tests {
@@ -119,13 +114,7 @@ func TestWebhook(t *testing.T) {
 			store := mocks.NewStore(t)
 			l := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-			webhook := GitHubWebhook{
-				Notifiers: notifier,
-				Store:     store,
-				Logger:    l,
-			}
-
-			testServer := httptest.NewServer(&webhook)
+			testServer := httptest.NewServer(GithubWebHookHandler(notifier, store, l))
 			t.Cleanup(testServer.Close)
 
 			if tt.mocks != nil {
