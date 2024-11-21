@@ -16,7 +16,7 @@ func TestRun(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	c := mocks.NewClient(t)
-	c.EXPECT().GetUserRepos(ctx, *user).Return(func(yield func(*github.Repository, error) bool) { return }).Once()
+	c.EXPECT().GetUserRepos(ctx, *user).Return(func(yield func(*github.Repository, error) bool) {}).Once()
 
 	errCh := make(chan error)
 	go func() {
