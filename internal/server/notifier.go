@@ -34,12 +34,14 @@ func (s SLogNotifier) Notify(repository *github.Repository, gazers []*github.Sta
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+var _ Notifier = SlackWebHookNotifier{}
+
 type SlackWebHookNotifier struct {
 	WebHookURL string
 	Logger     *slog.Logger
 }
 
-func (s *SlackWebHookNotifier) Notify(repository *github.Repository, gazers []*github.Stargazer) {
+func (s SlackWebHookNotifier) Notify(repository *github.Repository, gazers []*github.Stargazer) {
 	err := slack.PostWebhook(s.WebHookURL, &slack.WebhookMessage{
 		Text:        s.makeMessage(repository, gazers),
 		UnfurlLinks: false,
