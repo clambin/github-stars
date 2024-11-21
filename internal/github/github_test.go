@@ -1,4 +1,4 @@
-package stars
+package github
 
 import (
 	"context"
@@ -10,10 +10,11 @@ import (
 )
 
 func TestClient_GetUserRepoNames(t *testing.T) {
-	client := Client{Repositories: fakeRepositories{}}
+	client := NewGitHubClient("")
+	client.Repositories = fakeRepositories{}
 
 	var count int
-	for _, err := range client.GetUserRepoNames(context.Background(), "") {
+	for _, err := range client.GetUserRepos(context.Background(), "") {
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -23,9 +24,12 @@ func TestClient_GetUserRepoNames(t *testing.T) {
 }
 
 func TestClient_GetUserStars(t *testing.T) {
-	client := Client{Activity: fakeActivity{}}
+	client := NewGitHubClient("")
+	client.Activity = fakeActivity{}
 
-	starGazers, err := client.GetStarGazers(context.Background(), "", "foo")
+	repo := github.Repository{FullName: ConstP("user/foo"), Name: ConstP("foo")}
+
+	starGazers, err := client.GetStarGazers(context.Background(), &repo)
 	assert.NoError(t, err)
 	assert.Len(t, starGazers, 2)
 }

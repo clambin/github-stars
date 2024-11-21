@@ -1,10 +1,16 @@
-package stars
+package github
 
 import (
 	"context"
 	"github.com/google/go-github/v66/github"
 	"iter"
+	"strings"
 )
+
+type Client struct {
+	Repositories
+	Activity
+}
 
 type Repositories interface {
 	ListByUser(ctx context.Context, user string, opts *github.RepositoryListByUserOptions) ([]*github.Repository, *github.Response, error)
@@ -12,11 +18,6 @@ type Repositories interface {
 
 type Activity interface {
 	ListStargazers(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.Stargazer, *github.Response, error)
-}
-
-type Client struct {
-	Repositories
-	Activity
 }
 
 func NewGitHubClient(token string) *Client {
@@ -29,7 +30,7 @@ func NewGitHubClient(token string) *Client {
 
 const recordsPerPage = 100
 
-func (c Client) GetUserRepoNames(ctx context.Context, user string) iter.Seq2[*github.Repository, error] {
+func (c Client) GetUserRepos(ctx context.Context, user string) iter.Seq2[*github.Repository, error] {
 	return func(yield func(*github.Repository, error) bool) {
 		listOptions := github.RepositoryListByUserOptions{ListOptions: github.ListOptions{PerPage: recordsPerPage}}
 		for {
@@ -53,11 +54,14 @@ func (c Client) GetUserRepoNames(ctx context.Context, user string) iter.Seq2[*gi
 	}
 }
 
-func (c Client) GetStarGazers(ctx context.Context, user string, repo string) ([]*github.Stargazer, error) {
+func (c Client) GetStarGazers(ctx context.Context, repo *github.Repository) ([]*github.Stargazer, error) {
 	var starGazers []*github.Stargazer
 	listOptions := github.ListOptions{PerPage: recordsPerPage}
+
+	user := strings.TrimSuffix(repo.GetFullName(), "/"+repo.GetName())
+
 	for {
-		page, resp, err := c.Activity.ListStargazers(ctx, user, repo, &listOptions)
+		page, resp, err := c.Activity.ListStargazers(ctx, user, repo.GetName(), &listOptions)
 		if err != nil {
 			return nil, err
 		}
