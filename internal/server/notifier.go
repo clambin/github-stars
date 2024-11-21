@@ -31,7 +31,7 @@ func (s SLogNotifier) Notify(repository *github.Repository, gazers []*github.Sta
 	if added {
 		msg = "repo has new stargazers"
 	} else {
-		msg = "stargazers left repo"
+		msg = "repo lost stargazers"
 	}
 	s.Logger.Info(msg, "repo", repository.GetFullName(), "stargazers", len(gazers))
 }
@@ -55,22 +55,22 @@ func (s SlackNotifier) Notify(repository *github.Repository, gazers []*github.St
 	}
 }
 
-func (s SlackNotifier) makeMessage(repository *github.Repository, gazers []*github.Stargazer, added bool) string {
-	var msg string
-	if added {
-		msg = "received a star from "
-	} else {
-		msg = "lost a star from "
-	}
-	list := make([]string, len(gazers))
-	for i, gazer := range gazers {
-		list[i] = "<" + gazer.GetUser().GetHTMLURL() + "|@" + gazer.GetUser().GetLogin() + ">"
-	}
-	msg = "Repo <" + repository.GetHTMLURL() + "|" + repository.GetFullName() + "> " + msg
-	if len(gazers) > 1 {
-		msg += strconv.Itoa(len(gazers)) + " users: "
-	}
-	msg += strings.Join(list, ", ")
+var action = map[bool]string{
+	true:  "received",
+	false: "lost",
+}
 
-	return msg
+func (s SlackNotifier) makeMessage(repository *github.Repository, gazers []*github.Stargazer, added bool) string {
+	repo := "<" + repository.GetHTMLURL() + "|" + repository.GetFullName() + ">"
+
+	users := make([]string, len(gazers))
+	for i, gazer := range gazers {
+		users[i] = "<" + gazer.GetUser().GetHTMLURL() + "|@" + gazer.GetUser().GetLogin() + ">"
+	}
+	var userCount string
+	if len(users) > 1 {
+		userCount = strconv.Itoa(len(users)) + " users: "
+	}
+
+	return "Repo " + repo + " " + action[added] + " a star from " + userCount + strings.Join(users, ", ")
 }
