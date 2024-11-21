@@ -13,6 +13,9 @@ import (
 	"net/http"
 )
 
+// A GitHubWebhook receives events from a Slack App. The current implementation is limited to StarEvents.
+// Additionally, GitHubWebhook supports a readiness probe (/readyz), so an orchestrator can verify that
+// the server is ready to process requests.
 type GitHubWebhook struct {
 	Notifiers Notifier
 	Store     Store
@@ -79,6 +82,7 @@ func (g *GitHubWebhook) handleStarEvent(w http.ResponseWriter, r *http.Request) 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// GitHubAuth is a HTTP middleware that verifies the HMAC SHA-265 signature sent by GitHub.
 func GitHubAuth(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
