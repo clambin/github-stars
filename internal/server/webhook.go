@@ -21,11 +21,21 @@ type GitHubWebhook struct {
 
 var _ Store = &store.Store{}
 
-func (l *GitHubWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (g *GitHubWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.URL.Path {
+	case "/readyz":
+		// Readiness probe
+		w.WriteHeader(http.StatusOK)
+	default:
+		g.handleStarEvent(w, r)
+	}
+}
+
+func (g *GitHubWebhook) handleStarEvent(w http.ResponseWriter, r *http.Request) {
 	// Parse the webhook payload
 	var event github.StarEvent
 	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
-		l.Logger.Error("Unable to parse StarEvent", "err", err)
+		g.Logger.Error("Unable to parse StarEvent", "err", err)
 		http.Error(w, "Unable to parse payload", http.StatusInternalServerError)
 		return
 	}
@@ -38,29 +48,29 @@ func (l *GitHubWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Handle the "star" event
 	switch event.GetAction() {
 	case "created":
-		l.Logger.Debug("adding new stargazer", "repo", event.GetRepo().GetName(), "user", event.GetSender().GetLogin())
-		added, err := l.Store.Add(event.GetRepo(), &stargazer)
+		g.Logger.Debug("adding new stargazer", "repo", event.GetRepo().GetName(), "user", event.GetSender().GetLogin())
+		added, err := g.Store.Add(event.GetRepo(), &stargazer)
 		if err != nil {
-			l.Logger.Error("Unable to store star", "err", err)
+			g.Logger.Error("Unable to store star", "err", err)
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
-		if added && l.Notifiers != nil {
-			l.Notifiers.Notify(event.GetRepo(), []*github.Stargazer{&stargazer})
+		if added && g.Notifiers != nil {
+			g.Notifiers.Notify(event.GetRepo(), []*github.Stargazer{&stargazer})
 		}
 	case "deleted":
-		l.Logger.Debug("removing a stargazer", "repo", event.GetRepo().GetName(), "user", event.GetSender().GetLogin())
-		deleted, err := l.Store.Delete(event.GetRepo(), &stargazer)
+		g.Logger.Debug("removing a stargazer", "repo", event.GetRepo().GetName(), "user", event.GetSender().GetLogin())
+		deleted, err := g.Store.Delete(event.GetRepo(), &stargazer)
 		if err != nil {
-			l.Logger.Error("Unable to store star", "err", err)
+			g.Logger.Error("Unable to store star", "err", err)
 			http.Error(w, "db error", http.StatusInternalServerError)
 			return
 		}
-		if deleted && l.Notifiers != nil {
-			l.Notifiers.Notify(event.GetRepo(), []*github.Stargazer{&stargazer})
+		if deleted && g.Notifiers != nil {
+			g.Notifiers.Notify(event.GetRepo(), []*github.Stargazer{&stargazer})
 		}
 	default:
-		l.Logger.Warn("Unsupported action", "action", event.GetAction())
+		g.Logger.Warn("Unsupported action", "action", event.GetAction())
 		http.Error(w, "Unsupported action: "+event.GetAction(), http.StatusBadRequest)
 		return
 	}

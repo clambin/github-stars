@@ -21,6 +21,7 @@ import (
 func TestWebhook(t *testing.T) {
 	tests := []struct {
 		name  string
+		path  string
 		event github.StarEvent
 		mocks func(s *mocks.Store, n *mocks.Notifier)
 		want  int
@@ -105,6 +106,11 @@ func TestWebhook(t *testing.T) {
 			},
 			want: http.StatusOK,
 		},
+		{
+			name: "readiness probe",
+			path: "/readyz",
+			want: http.StatusOK,
+		},
 	}
 
 	for _, tt := range tests {
@@ -126,7 +132,7 @@ func TestWebhook(t *testing.T) {
 				tt.mocks(store, notifier)
 			}
 			body, _ := json.Marshal(&tt.event)
-			req, _ := http.NewRequest(http.MethodPost, testServer.URL, bytes.NewReader(body))
+			req, _ := http.NewRequest(http.MethodPost, testServer.URL+tt.path, bytes.NewReader(body))
 
 			resp, err := http.DefaultClient.Do(req)
 			assert.NoError(t, err)
