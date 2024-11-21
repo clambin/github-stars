@@ -34,14 +34,14 @@ func (s SLogNotifier) Notify(repository *github.Repository, gazers []*github.Sta
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var _ Notifier = SlackWebHookNotifier{}
+var _ Notifier = SlackNotifier{}
 
-type SlackWebHookNotifier struct {
+type SlackNotifier struct {
 	WebHookURL string
 	Logger     *slog.Logger
 }
 
-func (s SlackWebHookNotifier) Notify(repository *github.Repository, gazers []*github.Stargazer) {
+func (s SlackNotifier) Notify(repository *github.Repository, gazers []*github.Stargazer) {
 	err := slack.PostWebhook(s.WebHookURL, &slack.WebhookMessage{
 		Text:        s.makeMessage(repository, gazers),
 		UnfurlLinks: false,
@@ -51,7 +51,7 @@ func (s SlackWebHookNotifier) Notify(repository *github.Repository, gazers []*gi
 	}
 }
 
-func (s *SlackWebHookNotifier) makeMessage(repository *github.Repository, gazers []*github.Stargazer) string {
+func (s SlackNotifier) makeMessage(repository *github.Repository, gazers []*github.Stargazer) string {
 	list := make([]string, len(gazers))
 	for i, gazer := range gazers {
 		list[i] = "<" + gazer.GetUser().GetHTMLURL() + "|@" + gazer.GetUser().GetLogin() + ">"

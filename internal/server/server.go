@@ -56,10 +56,10 @@ func runWithClient(ctx context.Context, client Client, version string, l *slog.L
 	}()
 
 	notifiers := Notifiers{
-		SLogNotifier{Logger: l},
+		SLogNotifier{Logger: l.With("component", "slogNotifier")},
 	}
 	if *slackWebHook != "" {
-		notifiers = append(notifiers, &SlackWebHookNotifier{WebHookURL: *slackWebHook, Logger: l})
+		notifiers = append(notifiers, &SlackNotifier{WebHookURL: *slackWebHook, Logger: l.With("component", "slackNotifier")})
 	}
 
 	repoStore := store.New(*directory)
@@ -80,9 +80,10 @@ func runWithClient(ctx context.Context, client Client, version string, l *slog.L
 	httpServer := &http.Server{
 		Addr: *webHookAddr,
 		Handler: GitHubAuth(*webHookSecret)(
-			&Webhook{
-				Store:  repoStore,
-				Logger: l.With("component", "webhook"),
+			&GitHubWebhook{
+				Store:     repoStore,
+				Notifiers: notifiers,
+				Logger:    l.With("component", "webhook"),
 			},
 		),
 	}

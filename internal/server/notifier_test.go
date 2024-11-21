@@ -19,7 +19,7 @@ func TestSlackWebHookNotifier_makeMessage(t *testing.T) {
 		},
 	}}
 
-	var s SlackWebHookNotifier
+	var s SlackNotifier
 	text := s.makeMessage(repo, gazers)
 	assert.Equal(t, `Repo <https://example.com/foo/bar|foo/bar> received a star from <https://example.com/users/user1|@user1>`, text)
 

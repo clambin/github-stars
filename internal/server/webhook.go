@@ -13,7 +13,7 @@ import (
 	"net/http"
 )
 
-type Webhook struct {
+type GitHubWebhook struct {
 	Notifiers Notifier
 	Store     Store
 	Logger    *slog.Logger
@@ -21,11 +21,11 @@ type Webhook struct {
 
 var _ Store = &store.Store{}
 
-func (l *Webhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (l *GitHubWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Parse the webhook payload
 	var event github.StarEvent
 	if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
-		l.Logger.Error("Unable to parse request body", "err", err)
+		l.Logger.Error("Unable to parse StarEvent", "err", err)
 		http.Error(w, "Unable to parse payload", http.StatusInternalServerError)
 		return
 	}

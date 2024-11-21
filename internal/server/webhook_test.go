@@ -113,7 +113,7 @@ func TestWebhook(t *testing.T) {
 			store := mocks.NewStore(t)
 			l := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-			webhook := Webhook{
+			webhook := GitHubWebhook{
 				Notifiers: notifier,
 				Store:     store,
 				Logger:    l,
