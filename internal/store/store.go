@@ -3,7 +3,7 @@ package store
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/google/go-github/v66/github"
+	"github.com/google/go-github/v67/github"
 	"os"
 	"path/filepath"
 	"sync"

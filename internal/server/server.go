@@ -2,16 +2,16 @@ package server
 
 import (
 	"context"
-	"errors"
 	"flag"
 	ghc "github.com/clambin/github-stars/internal/github"
 	"github.com/clambin/github-stars/internal/store"
-	"github.com/google/go-github/v66/github"
+	"github.com/clambin/go-common/httputils"
+	"github.com/google/go-github/v67/github"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"golang.org/x/sync/errgroup"
 	"iter"
 	"log/slog"
 	"net/http"
-	"time"
 )
 
 var (
@@ -48,12 +48,12 @@ func Run(ctx context.Context, version string, l *slog.Logger) error {
 func runWithClient(ctx context.Context, client Client, version string, l *slog.Logger) error {
 	l.Info("github-stars is starting", "version", version)
 
-	http.Handle("/metrics", promhttp.Handler())
-	go func() {
-		if err := http.ListenAndServe(*addr, nil); !errors.Is(err, http.ErrServerClosed) {
-			l.Warn("failed to start Prometheus handler", "err", err)
-		}
-	}()
+	var g errgroup.Group
+	g.Go(func() error {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		return httputils.RunServer(ctx, &http.Server{Addr: *addr, Handler: mux})
+	})
 
 	notifiers := Notifiers{
 		SLogNotifier{Logger: l.With("component", "slogNotifier")},
@@ -86,23 +86,6 @@ func runWithClient(ctx context.Context, client Client, version string, l *slog.L
 		Addr:    *webHookAddr,
 		Handler: mux,
 	}
-
-	errCh := make(chan error)
-	go func() {
-		err = httpServer.ListenAndServe()
-		if errors.Is(err, http.ErrServerClosed) {
-			err = nil
-		}
-		errCh <- err
-	}()
-
-	select {
-	case err = <-errCh:
-		return err
-	case <-ctx.Done():
-	}
-
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer shutdownCancel()
-	return httpServer.Shutdown(shutdownCtx)
+	g.Go(func() error { return httputils.RunServer(ctx, httpServer) })
+	return g.Wait()
 }

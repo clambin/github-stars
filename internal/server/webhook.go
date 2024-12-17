@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/google/go-github/v66/github"
+	"github.com/google/go-github/v67/github"
 	"io"
 	"log/slog"
 	"net/http"
