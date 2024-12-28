@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"github.com/clambin/github-stars/internal/server/mocks"
-	"github.com/google/go-github/v67/github"
+	"github.com/google/go-github/v68/github"
 	"github.com/stretchr/testify/assert"
 	"log/slog"
 	"net/http"

@@ -6,7 +6,7 @@ import (
 	ghc "github.com/clambin/github-stars/internal/github"
 	"github.com/clambin/github-stars/internal/store"
 	"github.com/clambin/go-common/httputils"
-	"github.com/google/go-github/v67/github"
+	"github.com/google/go-github/v68/github"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sync/errgroup"
 	"iter"
