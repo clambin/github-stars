@@ -1,12 +1,10 @@
 name: test
-
 on:
   push:
     branches-ignore:
       - main
       - github-app
   pull_request_target:
-
 jobs:
   test:
     uses: clambin/workflows/.github/workflows/test.yaml@main
