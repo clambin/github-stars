@@ -3,6 +3,8 @@ on:
   push:
   schedule:
     - cron: '23 3 * * 6'
+permissions:
+  contents: read
 jobs:
   vulnerabilities:
     uses: clambin/workflows/.github/workflows/vulnerabilities.yaml@main

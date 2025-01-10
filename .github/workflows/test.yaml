@@ -5,6 +5,8 @@ on:
       - main
       - github-app
   pull_request_target:
+permissions:
+  contents: read
 jobs:
   test:
     uses: clambin/workflows/.github/workflows/test.yaml@main
