@@ -12,10 +12,6 @@ import (
 )
 
 func TestStore_SetStargazers(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
-
 	// current Store: user1, user2
 	const input = `{
 	"foo/foo": {
@@ -24,6 +20,7 @@ func TestStore_SetStargazers(t *testing.T) {
 	}
 }
 `
+	tmpDir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "stargazers.json"), []byte(input), 0600))
 
 	s := New(tmpDir)
@@ -63,11 +60,7 @@ func TestStore_SetStargazers(t *testing.T) {
 }
 
 func TestStore_Add_Delete(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(tmpDir) })
-
-	s := New(tmpDir)
+	s := New(t.TempDir())
 	assert.Error(t, s.Load())
 
 	repo := github.Repository{Name: testutils.Ptr("bar"), FullName: testutils.Ptr("foo/bar")}
