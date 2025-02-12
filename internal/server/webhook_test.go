@@ -112,7 +112,7 @@ func TestWebhook(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			notifier := mocks.NewNotifier(t)
 			store := mocks.NewStore(t)
-			l := slog.New(slog.NewTextHandler(io.Discard, nil))
+			l := slog.New(slog.DiscardHandler)
 
 			testServer := httptest.NewServer(GithubWebHookHandler(notifier, store, l))
 			t.Cleanup(testServer.Close)
