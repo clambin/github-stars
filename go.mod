@@ -1,14 +1,15 @@
 module github.com/clambin/github-stars
 
 go 1.23
+toolchain go1.24.0
 
 require (
-	github.com/clambin/go-common/httputils v0.1.2
+	github.com/clambin/go-common/httputils v0.2.0
 	github.com/google/go-github/v68 v68.0.0
 	github.com/prometheus/client_golang v1.20.5
 	github.com/slack-go/slack v0.16.0
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.11.0
 )
 
 require (
