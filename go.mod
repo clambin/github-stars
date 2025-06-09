@@ -5,7 +5,7 @@ go 1.24
 toolchain go1.24.0
 
 require (
-	codeberg.org/clambin/go-common/httputils v0.3.1
+	codeberg.org/clambin/go-common/httputils v0.3.2
 	github.com/google/go-github/v70 v70.0.0
 	github.com/prometheus/client_golang v1.21.1
 	github.com/slack-go/slack v0.17.0
