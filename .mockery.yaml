@@ -1,13 +1,13 @@
-with-expecter: true
-filename: "{{.InterfaceName}}.go"
-dir: "{{.InterfaceDir}}/mocks"
-mockname: "{{.InterfaceName}}"
-outpkg: "mocks"
-issue-845-fix: true
-resolve-type-alias: false
+dir: '{{.InterfaceDir}}/mocks'
+structname: '{{.InterfaceName}}'
+pkgname: mocks
+filename: 'mocks.go'
+template: testify
+template-data:
+  unroll-variadic: true
 packages:
   github.com/clambin/github-stars/internal/server:
     interfaces:
-      Client:
-      Store:
-      Notifier:
+      Client: {}
+      Store: {}
+      Notifier: {}

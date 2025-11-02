@@ -6,7 +6,7 @@ import (
 	"flag"
 	ghc "github.com/clambin/github-stars/internal/github"
 	"github.com/clambin/github-stars/internal/store"
-	"github.com/google/go-github/v70/github"
+	"github.com/google/go-github/v76/github"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"golang.org/x/sync/errgroup"
 	"iter"

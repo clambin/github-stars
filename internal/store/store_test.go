@@ -2,7 +2,7 @@ package store
 
 import (
 	"github.com/clambin/github-stars/internal/testutils"
-	"github.com/google/go-github/v70/github"
+	"github.com/google/go-github/v76/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"

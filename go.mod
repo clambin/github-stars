@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	codeberg.org/clambin/go-common/httputils v0.4.0
-	github.com/google/go-github/v70 v70.0.0
+	github.com/google/go-github/v76 v76.0.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/slack-go/slack v0.17.3
 	github.com/stretchr/testify v1.11.1
