@@ -27,8 +27,8 @@ type RepoStars map[string]RepoStar
 
 // Store contains all stars for all repositories
 type Store struct {
-	DatabasePath string
 	Repos        map[string]RepoStars
+	DatabasePath string
 	lock         sync.RWMutex
 }
 
@@ -76,8 +76,8 @@ func (s *Store) save() error {
 }
 
 type Stargazer struct {
-	User      string
 	StarredAt time.Time
+	User      string
 }
 
 // Add adds new stargazers to a repository.
