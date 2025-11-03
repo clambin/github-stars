@@ -1,22 +1,20 @@
-package stars
+package main
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"iter"
-	"log/slog"
+	"net/http"
 	"testing"
 	"time"
 
-	"github.com/clambin/github-stars/slogctx"
+	"github.com/clambin/github-stars/internal/stars"
 	"github.com/google/go-github/v76/github"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestScan(t *testing.T) {
-	c := fakeClient{
+func TestRun(t *testing.T) {
+	client := fakeClient{
 		repos: map[string][]*github.Repository{
 			"user1": {
 				{FullName: varPtr("user1/foo")},
@@ -38,19 +36,37 @@ func TestScan(t *testing.T) {
 			},
 		},
 	}
+	cfg := configuration{
+		User:      "user1",
+		Directory: t.TempDir(),
+		GitHub:    githubConfiguration{WebHook: webhookConfiguration{Addr: ":8080"}},
+	}
 
-	var buf bytes.Buffer
-	ctx := slogctx.NewWithContext(t.Context(), slogWithoutTime(&buf, slog.LevelInfo))
-	store, err := NewNotifyingStore(t.TempDir(), Notifiers{SlogNotifier{}})
-	require.NoError(t, err)
+	// start the handler
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	errCh := make(chan error)
+	go func() {
+		errCh <- runWithClient(ctx, &client, cfg)
+	}()
 
-	require.NoError(t, Scan(ctx, "user1", &c, store, false))
+	// wait for the handler to perform the scan and start serving the webhook
+	for {
+		time.Sleep(10 * time.Millisecond)
+		if resp, err := http.Get(fmt.Sprintf("http://localhost%s/readyz", cfg.GitHub.WebHook.Addr)); err == nil {
+			_ = resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				break
+			}
+		}
+	}
 
-	assert.Contains(t, buf.String(), "level=INFO msg=\"repo has 1 new stargazers\" repository=user1/foo\n")
-	assert.Contains(t, buf.String(), "level=INFO msg=\"repo has 1 new stargazers\" repository=user1/bar\n")
+	// stop the handler
+	cancel()
+	require.NoError(t, <-errCh)
 }
 
-var _ Client = fakeClient{}
+var _ stars.Client = fakeClient{}
 
 type fakeClient struct {
 	repos      map[string][]*github.Repository
@@ -78,4 +94,8 @@ func (f fakeClient) GetStarGazers(_ context.Context, repository *github.Reposito
 		return stargazers, nil
 	}
 	return nil, fmt.Errorf("repo %q not found", repository.GetFullName())
+}
+
+func varPtr[T any](v T) *T {
+	return &v
 }

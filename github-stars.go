@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,25 +22,25 @@ var version = "(devel)"
 type configuration struct {
 	flagger.Log
 	flagger.Prom
-	GitHub          githubConfiguration
-	Slack           slackConfiguration
-	Directory       string
-	User            string
-	IncludeArchived bool
+	GitHub    githubConfiguration
+	Slack     slackConfiguration
+	Directory string `flagger.usage:"database directory"`
+	User      string `flagger.usage:"user to scan for repositories"`
+	Archived  bool   `flagger.usage:"include archived repositories"`
 }
 
 type githubConfiguration struct {
-	Token   string
+	Token   string `flagger.usage:"GitHub API token"`
 	WebHook webhookConfiguration
 }
 
 type webhookConfiguration struct {
-	Addr   string
-	Secret string
+	Addr   string `flagger.usage:"address to listen on for GitHub webhook calls"`
+	Secret string `flagger.usage:"secret to verify GitHub webhook calls"`
 }
 
 type slackConfiguration struct {
-	Webhook string
+	Webhook string `flagger.usage:"Slack webhook URL to post messages to"`
 }
 
 func main() {
@@ -54,6 +56,17 @@ func main() {
 	flagger.SetFlags(flag.CommandLine, &cfg)
 	flag.Parse()
 
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	client := github.NewGitHubClient(cfg.GitHub.Token)
+	if err := runWithClient(ctx, client, cfg); err != nil {
+		cfg.Logger(os.Stderr, nil).Error("failed to run", "err", err)
+		os.Exit(1)
+	}
+}
+
+func runWithClient(ctx context.Context, client stars.Client, cfg configuration) error {
 	// setup
 	logger := cfg.Logger(os.Stderr, nil)
 	logger.Info("starting github-stars", "version", version)
@@ -67,19 +80,16 @@ func main() {
 
 	store, err := stars.NewNotifyingStore(cfg.Directory, notifiers)
 	if err != nil {
-		logger.Error("failed to create store", "err", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to create store: %w", err)
 	}
 
-	ctx, cancel := signal.NotifyContext(slogctx.New(logger), os.Interrupt, syscall.SIGTERM)
-	defer cancel()
+	ctx = slogctx.NewWithContext(ctx, logger)
 
 	// on startup, scan all repos.  this will find any stars while we weren't running.
 	before := time.Now()
 	logger.Info("starting scan")
-	if err = stars.Scan(ctx, cfg.User, github.NewGitHubClient(cfg.GitHub.Token), store, cfg.IncludeArchived); err != nil {
-		logger.Error("failed to scan", "err", err)
-		os.Exit(1)
+	if err = stars.Scan(ctx, cfg.User, client, store, cfg.Archived); err != nil {
+		return fmt.Errorf("failed to scan: %w", err)
 	}
 	logger.Info("scan complete", "duration_msec", time.Since(before).Milliseconds())
 
@@ -91,7 +101,7 @@ func main() {
 
 	logger.Info("starting webhook server", "addr", cfg.GitHub.WebHook.Addr)
 	if err = httputils.RunServer(ctx, &s); err != nil {
-		logger.Error("failed to start webhook server", "err", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to start webhook server: %w", err)
 	}
+	return nil
 }

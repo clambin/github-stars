@@ -24,8 +24,8 @@ func Scan(
 	s *NotifyingStore,
 	includeArchived bool,
 ) error {
-	l := slogctx.FromContext(ctx)
-	l.Debug("scanning all user repos")
+	logger := slogctx.FromContext(ctx)
+	logger.Debug("scanning all user repos")
 
 	var reposFound, reposScanned int
 	start := time.Now()
@@ -36,7 +36,7 @@ func Scan(
 			return fmt.Errorf("GetUserRepos: %w", err)
 		}
 		reposFound++
-		l.Debug("repo found", "repo", repo.GetFullName(), "archived", repo.GetArchived())
+		logger.Debug("repo found", "repo", repo.GetFullName(), "archived", repo.GetArchived())
 		if !includeArchived && repo.GetArchived() {
 			continue
 		}
@@ -46,7 +46,7 @@ func Scan(
 		})
 	}
 	err := g.Wait()
-	l.Debug("all user repos scanned", "err", err, "found", reposFound, "scanned", reposScanned, "elapsed", time.Since(start))
+	logger.Debug("all user repos scanned", "err", err, "found", reposFound, "scanned", reposScanned, "elapsed", time.Since(start))
 	return err
 }
 
