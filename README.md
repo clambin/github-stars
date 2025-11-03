@@ -33,34 +33,36 @@ To configure a GitHub app:
 github-stars supports the following commandline options:
 
 ```aiignore
-
-  -addr string
-        Prometheus handler address (default ":9091")
-  -debug
-        Enable debug mode
+  -archived
+        include archived repositories
   -directory string
-        Database directory (default ".")
+        database directory (default ".")
   -github.token string
         GitHub API token
   -github.webhook.addr string
-        Address for the webhook server (default ":8080")
+        address to listen on for GitHub webhook calls (default ":8080")
   -github.webhook.secret string
-        Secret for the webhook server (default "todo")
-  -include_archived
-        Include archived repositories
-  -slack.webHook string
-        Slack WebHook URL
+        secret to verify GitHub webhook calls
+  -log.format string
+        log format (default "text")
+  -log.level string
+        log level (default "info")
+  -prom.addr string
+        prometheus listen address (default ":9100")
+  -prom.path string
+        prometheus path (default "/metrics")
+  -slack.webhook string
+        Slack webhook URL to post messages to
   -user string
-        GitHub username
-
+        user to scan for repositories
 ```
 
 At a minimum, you will need to configure:
 
 - github.token: a GitHub personal access token granting access to your repositories.
-- github.webHook.secret: the Webhook secret configured in the GitHub app.
+- github.webhook.secret: the Webhook secret configured in the GitHub app.
 - user: your GitHub account name.
-- slack.webHook: the Slack webHook to use to post to your Slack workspace / channel.
+- slack.webhook: the Slack webHook to use to post to your Slack workspace / channel.
 
 ## Authors
 
@@ -68,4 +70,4 @@ At a minimum, you will need to configure:
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+This project is licensed under the [MIT](LICENSE.md) license.

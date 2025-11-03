@@ -2,9 +2,10 @@ package github
 
 import (
 	"context"
-	"github.com/google/go-github/v76/github"
 	"iter"
 	"strings"
+
+	"github.com/google/go-github/v76/github"
 )
 
 type Client struct {
@@ -36,7 +37,7 @@ func (c Client) GetUserRepos(ctx context.Context, user string) iter.Seq2[*github
 		for {
 			var resp *github.Response
 			// TODO: ListByAuthenticatedUser() could list all repos the user (token) has access to?
-			repoPage, resp, err := c.Repositories.ListByUser(ctx, user, &listOptions)
+			repoPage, resp, err := c.ListByUser(ctx, user, &listOptions)
 			if err != nil {
 				yield(nil, err)
 				return
@@ -61,7 +62,7 @@ func (c Client) GetStarGazers(ctx context.Context, repo *github.Repository) ([]*
 	user := strings.TrimSuffix(repo.GetFullName(), "/"+repo.GetName())
 
 	for {
-		page, resp, err := c.Activity.ListStargazers(ctx, user, repo.GetName(), &listOptions)
+		page, resp, err := c.ListStargazers(ctx, user, repo.GetName(), &listOptions)
 		if err != nil {
 			return nil, err
 		}
