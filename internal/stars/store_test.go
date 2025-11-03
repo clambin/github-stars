@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/clambin/github-stars/internal/testutils"
 	"github.com/clambin/github-stars/slogctx"
 	"github.com/google/go-github/v76/github"
 	"github.com/slack-go/slack"
@@ -24,15 +23,15 @@ func TestStore(t *testing.T) {
 	store, err := NewStore(tmpDir)
 	require.NoError(t, err)
 
-	repo := &github.Repository{FullName: testutils.Ptr("foo/bar")}
+	repo := &github.Repository{FullName: varPtr("foo/bar")}
 	toAdd := []*github.Stargazer{
 		{
 			StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC)},
-			User:      &github.User{Login: testutils.Ptr("user1")},
+			User:      &github.User{Login: varPtr("user1")},
 		},
 		{
 			StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 9, 0, 0, 0, time.UTC)},
-			User:      &github.User{Login: testutils.Ptr("user2")},
+			User:      &github.User{Login: varPtr("user2")},
 		},
 	}
 
@@ -77,13 +76,13 @@ func TestNotifyingStore(t *testing.T) {
 	require.NoError(t, err)
 
 	var buf bytes.Buffer
-	ctx := slogctx.NewWithContext(t.Context(), testutils.SLogWithoutTime(&buf, slog.LevelInfo))
+	ctx := slogctx.NewWithContext(t.Context(), slogWithoutTime(&buf, slog.LevelInfo))
 
-	repo := &github.Repository{FullName: testutils.Ptr("foo/bar"), HTMLURL: testutils.Ptr("https://example.com/foo/bar")}
+	repo := &github.Repository{FullName: varPtr("foo/bar"), HTMLURL: varPtr("https://example.com/foo/bar")}
 	toAdd := []*github.Stargazer{
 		{
 			StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC)},
-			User:      &github.User{HTMLURL: testutils.Ptr("https://example.com/user1"), Login: testutils.Ptr("user1")},
+			User:      &github.User{HTMLURL: varPtr("https://example.com/user1"), Login: varPtr("user1")},
 		},
 	}
 

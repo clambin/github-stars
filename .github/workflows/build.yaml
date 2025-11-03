@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - main
-      - github-app
+      - refactor
 permissions:
   packages: write
 jobs:

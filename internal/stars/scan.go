@@ -1,25 +1,30 @@
-package server
+package stars
 
 import (
 	"context"
 	"fmt"
-	"log/slog"
+	"iter"
 	"time"
 
+	"github.com/clambin/github-stars/slogctx"
 	"github.com/google/go-github/v76/github"
 	"golang.org/x/sync/errgroup"
 )
+
+type Client interface {
+	GetUserRepos(ctx context.Context, user string) iter.Seq2[*github.Repository, error]
+	GetStarGazers(ctx context.Context, repository *github.Repository) ([]*github.Stargazer, error)
+}
 
 // Scan retrieves all repositories for the user, gets the stars for each repository and adds new ones to the Store.
 func Scan(
 	ctx context.Context,
 	user string,
 	c Client,
-	s Store,
-	n Notifier,
+	s *NotifyingStore,
 	includeArchived bool,
-	l *slog.Logger,
 ) error {
+	l := slogctx.FromContext(ctx)
 	l.Debug("scanning all user repos")
 
 	var reposFound, reposScanned int
@@ -37,7 +42,7 @@ func Scan(
 		}
 		reposScanned++
 		g.Go(func() error {
-			return scanRepo(ctx, c, s, n, repo, l.With("repo", repo.GetFullName()))
+			return scanRepo(ctx, c, s, repo)
 		})
 	}
 	err := g.Wait()
@@ -48,18 +53,14 @@ func Scan(
 func scanRepo(
 	ctx context.Context,
 	c Client,
-	s Store,
-	n Notifier,
+	s *NotifyingStore,
 	r *github.Repository,
-	_ *slog.Logger,
 ) error {
 	stargazers, err := c.GetStarGazers(ctx, r)
-	if err != nil {
-		return err
+	if err == nil {
+		err = s.Add(ctx, r, stargazers...)
 	}
-	newStargazers, err := s.SetStargazers(r, stargazers)
-	if err == nil && len(newStargazers) > 0 && n != nil {
-		n.Notify(r, newStargazers, true)
-	}
+	// TODO: this only adds stars to an existing store.  if someone unstarred a repo while we were down, it won't be removed.
+	// to fix that, we need to iterate over stargazers in the store and remove any that are not in the new list.
 	return err
 }
