@@ -21,7 +21,6 @@ type configuration struct {
 	flagger.Log
 	flagger.Prom
 	GitHub          githubConfiguration
-	WebHook         webhookConfiguration
 	Slack           slackConfiguration
 	Directory       string
 	User            string
@@ -29,7 +28,8 @@ type configuration struct {
 }
 
 type githubConfiguration struct {
-	Token string
+	Token   string
+	WebHook webhookConfiguration
 }
 
 type webhookConfiguration struct {
@@ -38,14 +38,16 @@ type webhookConfiguration struct {
 }
 
 type slackConfiguration struct {
-	WebHookURL string
+	Webhook string
 }
 
 func main() {
 	cfg := configuration{
-		Log:       flagger.DefaultLog,
-		Prom:      flagger.DefaultProm,
-		WebHook:   webhookConfiguration{Addr: ":8080"},
+		Log:  flagger.DefaultLog,
+		Prom: flagger.DefaultProm,
+		GitHub: githubConfiguration{
+			WebHook: webhookConfiguration{Addr: ":8080"},
+		},
 		Slack:     slackConfiguration{},
 		Directory: ".",
 	}
@@ -59,8 +61,8 @@ func main() {
 	notifiers := stars.Notifiers{
 		stars.SlogNotifier{},
 	}
-	if cfg.Slack.WebHookURL != "" {
-		notifiers = append(notifiers, stars.SlackNotifier{WebHookURL: cfg.Slack.WebHookURL})
+	if cfg.Slack.Webhook != "" {
+		notifiers = append(notifiers, stars.SlackNotifier{WebHookURL: cfg.Slack.Webhook})
 	}
 
 	store, err := stars.NewNotifyingStore(cfg.Directory, notifiers)
@@ -83,11 +85,11 @@ func main() {
 
 	// start the GitHub webhook handler
 	s := http.Server{
-		Addr:    cfg.WebHook.Addr,
-		Handler: github.NewWebHook(cfg.WebHook.Secret, stars.Handler(store), logger),
+		Addr:    cfg.GitHub.WebHook.Addr,
+		Handler: github.NewWebHook(cfg.GitHub.WebHook.Secret, stars.Handler(store), logger),
 	}
 
-	logger.Info("starting webhook server", "addr", cfg.WebHook.Addr)
+	logger.Info("starting webhook server", "addr", cfg.GitHub.WebHook.Addr)
 	if err = httputils.RunServer(ctx, &s); err != nil {
 		logger.Error("failed to start webhook server", "err", err)
 		os.Exit(1)
