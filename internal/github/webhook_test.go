@@ -49,7 +49,6 @@ func TestWebHook(t *testing.T) {
 			h := NewWebHook(authSecret, handler, slog.New(slog.DiscardHandler))
 			req, _ := http.NewRequestWithContext(t.Context(), tt.method, tt.path, strings.NewReader(tt.body))
 			req.Header.Set("X-Hub-Signature-256", calculateHMAC([]byte(tt.body), tt.secret))
-			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("User-Agent", "GitHub-Hookshot/1.0")
 			resp := httptest.NewRecorder()
 			h.ServeHTTP(resp, req)
