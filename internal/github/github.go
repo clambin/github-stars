@@ -2,9 +2,10 @@ package github
 
 import (
 	"context"
-	"github.com/google/go-github/v76/github"
 	"iter"
 	"strings"
+
+	"github.com/google/go-github/v76/github"
 )
 
 type Client struct {

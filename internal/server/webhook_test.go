@@ -4,11 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/clambin/github-stars/internal/server/mocks"
-	"github.com/clambin/github-stars/internal/testutils"
-	"github.com/google/go-github/v76/github"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"io"
 	"log/slog"
 	"net/http"
@@ -16,6 +11,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/clambin/github-stars/internal/server/mocks"
+	"github.com/clambin/github-stars/internal/testutils"
+	"github.com/google/go-github/v76/github"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestWebhook(t *testing.T) {

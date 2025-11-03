@@ -1,6 +1,6 @@
 module github.com/clambin/github-stars
 
-go 1.24.0
+go 1.25
 
 require (
 	codeberg.org/clambin/go-common/httputils v0.4.0

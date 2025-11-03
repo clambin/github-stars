@@ -1,11 +1,12 @@
 package server
 
 import (
-	"github.com/google/go-github/v76/github"
-	"github.com/slack-go/slack"
 	"log/slog"
 	"strconv"
 	"strings"
+
+	"github.com/google/go-github/v76/github"
+	"github.com/slack-go/slack"
 )
 
 var _ Notifier = Notifiers{}

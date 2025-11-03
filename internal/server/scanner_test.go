@@ -3,16 +3,17 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/clambin/github-stars/internal/server/mocks"
-	"github.com/clambin/github-stars/internal/testutils"
-	"github.com/google/go-github/v76/github"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"io"
 	"iter"
 	"log/slog"
 	"testing"
 	"time"
+
+	"github.com/clambin/github-stars/internal/server/mocks"
+	"github.com/clambin/github-stars/internal/testutils"
+	"github.com/google/go-github/v76/github"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestScan(t *testing.T) {

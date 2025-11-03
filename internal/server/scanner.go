@@ -3,10 +3,11 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/google/go-github/v76/github"
-	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"time"
+
+	"github.com/google/go-github/v76/github"
+	"golang.org/x/sync/errgroup"
 )
 
 // Scan retrieves all repositories for the user, gets the stars for each repository and adds new ones to the Store.

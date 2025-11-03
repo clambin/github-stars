@@ -2,11 +2,12 @@ package server
 
 import (
 	"bytes"
+	"log/slog"
+	"testing"
+
 	"github.com/clambin/github-stars/internal/testutils"
 	"github.com/google/go-github/v76/github"
 	"github.com/stretchr/testify/assert"
-	"log/slog"
-	"testing"
 )
 
 func TestSLogNotifier_Notify(t *testing.T) {

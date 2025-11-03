@@ -6,10 +6,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/google/go-github/v76/github"
 	"io"
 	"log/slog"
 	"net/http"
+
+	"github.com/google/go-github/v76/github"
 )
 
 // A GithubWebHookHandler receives events from a Slack App. The current implementation is limited to StarEvents.

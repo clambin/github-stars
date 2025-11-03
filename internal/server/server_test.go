@@ -2,14 +2,15 @@ package server
 
 import (
 	"context"
-	"github.com/clambin/github-stars/internal/server/mocks"
-	"github.com/google/go-github/v76/github"
-	"github.com/stretchr/testify/assert"
 	"log/slog"
 	"net/http"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/clambin/github-stars/internal/server/mocks"
+	"github.com/google/go-github/v76/github"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRun(t *testing.T) {

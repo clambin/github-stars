@@ -3,10 +3,11 @@ package github
 import (
 	"context"
 	"errors"
-	"github.com/google/go-github/v76/github"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
+
+	"github.com/google/go-github/v76/github"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestClient_GetUserRepoNames(t *testing.T) {
