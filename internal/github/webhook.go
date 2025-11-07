@@ -43,7 +43,7 @@ func NewStarEventWebhook(secret string, h func(context.Context, Stargazer) error
 			RepoHTMLURL: evt.Repo.GetHTMLURL(),
 			Login:       evt.Sender.GetLogin(),
 			UserHTMLURL: evt.Sender.GetHTMLURL(),
-			StarredAt:   evt.StarredAt.Time,
+			StarredAt:   evt.GetStarredAt().Time,
 		}
 		if err := h(r.Context(), stargazer); err != nil {
 			logger.Error("Unable to handle StarEvent", "err", err)
