@@ -3,36 +3,29 @@ package github
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v76/github"
+	"github.com/google/go-github/v77/github"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestClient_GetUserRepoNames(t *testing.T) {
+func TestClient_Stars(t *testing.T) {
 	client := NewGitHubClient("")
 	client.Repositories = fakeRepositories{}
-
-	var count int
-	for _, err := range client.GetUserRepos(context.Background(), "") {
-		if err != nil {
-			t.Fatal(err)
-		}
-		count++
-	}
-	assert.Equal(t, 2, count)
-}
-
-func TestClient_GetUserStars(t *testing.T) {
-	client := NewGitHubClient("")
 	client.Activity = fakeActivity{}
 
-	repo := github.Repository{FullName: ConstP("user/foo"), Name: ConstP("foo")}
+	stars, err := client.Stargazers(context.Background(), "bar", true)
+	require.NoError(t, err)
 
-	starGazers, err := client.GetStarGazers(context.Background(), &repo)
-	assert.NoError(t, err)
-	assert.Len(t, starGazers, 2)
+	want := []Stargazer{
+		{RepoName: "foo/foo", Login: "user1", StarredAt: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
+		{RepoName: "foo/foo", Login: "user2", StarredAt: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
+	}
+
+	assert.Equal(t, want, stars)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -50,29 +43,19 @@ func (f fakeRepositories) ListByUser(_ context.Context, _ string, opts *github.R
 	return resp.repos, resp.resp, nil
 }
 
-type listResponse struct {
+type repoResponsePage struct {
 	repos []*github.Repository
 	resp  *github.Response
 }
 
-var listResponses = map[int]listResponse{
+var listResponses = map[int]repoResponsePage{
 	0: {
-		repos: []*github.Repository{
-			{
-				FullName: ConstP("foo/foo"),
-				Name:     ConstP("foo"),
-			},
-		},
-		resp: &github.Response{NextPage: 1},
+		repos: []*github.Repository{{FullName: varP("foo/foo"), Name: varP("foo")}},
+		resp:  &github.Response{NextPage: 1},
 	},
 	1: {
-		repos: []*github.Repository{
-			{
-				FullName: ConstP("foo/bar"),
-				Name:     ConstP("bar"),
-			},
-		},
-		resp: &github.Response{NextPage: 0},
+		repos: []*github.Repository{{FullName: varP("foo/bar"), Name: varP("bar")}},
+		resp:  &github.Response{NextPage: 0},
 	},
 }
 
@@ -83,33 +66,36 @@ var _ Activity = &fakeActivity{}
 type fakeActivity struct{}
 
 func (f fakeActivity) ListStargazers(_ context.Context, _ string, repo string, opts *github.ListOptions) ([]*github.Stargazer, *github.Response, error) {
-	repoResps, ok := stargazerResponses[repo]
+	repoResps, ok := listStargazersResponses[repo]
 	if !ok {
-		return nil, nil, errors.New("repo not found")
+		return nil, nil, fmt.Errorf("repo not found: %s", repo)
 	}
 	repoResp, ok := repoResps[opts.Page]
 	if !ok {
-		return nil, nil, errors.New("page not found")
+		return nil, nil, fmt.Errorf("page not found: %s/%d", repo, opts.Page)
 	}
 	return repoResp.gazers, repoResp.resp, nil
 }
 
-var stargazerResponses = map[string]map[int]stargazerResponse{
+var listStargazersResponses = map[string]map[int]stargazerResponse{
 	"foo": {
 		0: {
 			gazers: []*github.Stargazer{{
 				StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
-				User:      &github.User{Login: ConstP("user1")},
+				User:      &github.User{Login: varP("user1")},
 			}},
 			resp: &github.Response{NextPage: 1},
 		},
 		1: {
 			gazers: []*github.Stargazer{{
 				StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
-				User:      &github.User{Login: ConstP("user2")},
+				User:      &github.User{Login: varP("user2")},
 			}},
 			resp: &github.Response{NextPage: 0},
 		},
+	},
+	"bar": {
+		0: {resp: &github.Response{NextPage: 0}},
 	},
 }
 
@@ -120,6 +106,6 @@ type stargazerResponse struct {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-func ConstP[T any](t T) *T {
+func varP[T any](t T) *T {
 	return &t
 }

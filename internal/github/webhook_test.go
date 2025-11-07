@@ -1,15 +1,22 @@
 package github
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/clambin/github-stars/slogctx"
+	"github.com/google/go-github/v77/github"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWebHook(t *testing.T) {
@@ -46,13 +53,82 @@ func TestWebHook(t *testing.T) {
 				}
 				w.WriteHeader(http.StatusOK)
 			})
-			h := NewWebHook(authSecret, handler, slog.New(slog.DiscardHandler))
+			h := NewWebhook(authSecret, handler, slog.New(slog.DiscardHandler))
 			req, _ := http.NewRequestWithContext(t.Context(), tt.method, tt.path, strings.NewReader(tt.body))
 			req.Header.Set("X-Hub-Signature-256", calculateHMAC([]byte(tt.body), tt.secret))
 			req.Header.Set("User-Agent", "GitHub-Hookshot/1.0")
 			resp := httptest.NewRecorder()
 			h.ServeHTTP(resp, req)
 			assert.Equal(t, tt.want, resp.Code)
+		})
+	}
+}
+
+func TestNewStarEventWebhook(t *testing.T) {
+	tests := []struct {
+		name           string
+		event          github.StarEvent
+		want           Stargazer
+		wantStatusCode int
+	}{
+		{
+			name: "add",
+			event: github.StarEvent{
+				Action:    varP("created"),
+				StarredAt: &github.Timestamp{Time: time.Date(2025, time.November, 7, 21, 30, 0, 0, time.UTC)},
+				Repo:      &github.Repository{FullName: varP("foo/bar")},
+				Sender:    &github.User{Login: varP("user1")},
+			},
+			want: Stargazer{
+				Action:      "created",
+				RepoName:    "foo/bar",
+				RepoHTMLURL: "",
+				Login:       "user1",
+				UserHTMLURL: "",
+				StarredAt:   time.Date(2025, time.November, 7, 21, 30, 0, 0, time.UTC),
+			},
+			wantStatusCode: http.StatusOK,
+		},
+		{
+			name: "delete",
+			event: github.StarEvent{
+				Action:    varP("deleted"),
+				StarredAt: &github.Timestamp{Time: time.Date(2025, time.November, 7, 21, 30, 0, 0, time.UTC)},
+				Repo:      &github.Repository{FullName: varP("foo/bar")},
+				Sender:    &github.User{Login: varP("user1")},
+			},
+			want: Stargazer{
+				Action:      "deleted",
+				RepoName:    "foo/bar",
+				RepoHTMLURL: "",
+				Login:       "user1",
+				UserHTMLURL: "",
+				StarredAt:   time.Date(2025, time.November, 7, 21, 30, 0, 0, time.UTC),
+			},
+			wantStatusCode: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			const secret = "secret"
+			h := NewStarEventWebhook(secret, func(_ context.Context, stargazer Stargazer) error {
+				if stargazer != tt.want {
+					return fmt.Errorf("got %v, want %v", stargazer, tt.want)
+				}
+				return nil
+			}, slog.New(slog.DiscardHandler))
+
+			var buf bytes.Buffer
+			_ = json.NewEncoder(&buf).Encode(tt.event)
+			mac := calculateHMAC(buf.Bytes(), secret)
+
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", &buf)
+			req.Header.Set("X-Hub-Signature-256", mac)
+			req.Header.Set("User-Agent", "GitHub-Hookshot/1.0")
+			resp := httptest.NewRecorder()
+			h.ServeHTTP(resp, req)
+			require.Equal(t, tt.wantStatusCode, resp.Code)
 		})
 	}
 }

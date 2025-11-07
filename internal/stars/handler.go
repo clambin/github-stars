@@ -1,53 +1,40 @@
 package stars
 
 import (
-	"encoding/json"
-	"net/http"
+	"context"
+	"fmt"
+	"log/slog"
 
+	"github.com/clambin/github-stars/internal/github"
 	"github.com/clambin/github-stars/slogctx"
-	"github.com/google/go-github/v76/github"
 )
 
-func Handler(store *NotifyingStore) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func Handler(store *NotifyingStore) func(ctx context.Context, stargazer github.Stargazer) error {
+	return func(ctx context.Context, stargazer github.Stargazer) error {
 		// Get logger
-		ctx := r.Context()
-		logger := slogctx.FromContext(ctx)
-
-		// Parse the webhook payload
-		var event github.StarEvent
-		if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
-			logger.Error("Unable to parse StarEvent", "err", err)
-			http.Error(w, "Unable to parse payload", http.StatusInternalServerError)
-			return
-		}
-
-		stargazer := github.Stargazer{
-			StarredAt: event.StarredAt,
-			User:      event.Sender,
-		}
+		logger := slogctx.FromContext(ctx).With(
+			slog.String("repo", stargazer.RepoName),
+			slog.String("user", stargazer.Login),
+		)
 
 		// Handle the "star" event
-		switch event.GetAction() {
+		switch stargazer.Action {
 		case "created":
-			logger.Debug("adding new stargazer", "repo", event.GetRepo().GetName(), "user", event.GetSender().GetLogin())
-			if err := store.Add(ctx, event.GetRepo(), &stargazer); err != nil {
+			logger.Debug("adding new stargazer")
+			if err := store.Add(ctx, stargazer); err != nil {
 				logger.Error("Unable to store star", "err", err)
-				http.Error(w, "db error", http.StatusInternalServerError)
-				return
+				return fmt.Errorf("add: %w", err)
 			}
 		case "deleted":
-			logger.Debug("removing a stargazer", "repo", event.GetRepo().GetName(), "user", event.GetSender().GetLogin())
-			if err := store.Delete(ctx, event.GetRepo(), &stargazer); err != nil {
+			logger.Debug("removing a stargazer")
+			if err := store.Delete(ctx, stargazer); err != nil {
 				logger.Error("Unable to store star", "err", err)
-				http.Error(w, "db error", http.StatusInternalServerError)
-				return
+				return fmt.Errorf("delete: %w", err)
 			}
 		default:
-			logger.Warn("Unsupported action", "action", event.GetAction())
-			http.Error(w, "Unsupported action: "+event.GetAction(), http.StatusBadRequest)
-			return
+			logger.Warn("Unsupported action", "action", stargazer.Action)
+			return fmt.Errorf("unsupported action: %s", stargazer.Action)
 		}
-		w.WriteHeader(http.StatusOK)
-	})
+		return nil
+	}
 }

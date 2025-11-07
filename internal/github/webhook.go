@@ -2,17 +2,20 @@ package github
 
 import (
 	"bytes"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 
 	"github.com/clambin/github-stars/slogctx"
+	"github.com/google/go-github/v77/github"
 )
 
-func NewWebHook(secret string, h http.Handler, logger *slog.Logger) http.Handler {
+func NewWebhook(secret string, h http.Handler, logger *slog.Logger) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("POST /",
 		withGitHubAuth(secret)(
@@ -25,6 +28,32 @@ func NewWebHook(secret string, h http.Handler, logger *slog.Logger) http.Handler
 		w.WriteHeader(http.StatusOK)
 	})
 	return mux
+}
+
+func NewStarEventWebhook(secret string, h func(context.Context, Stargazer) error, logger *slog.Logger) http.Handler {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var evt github.StarEvent
+		if err := json.NewDecoder(r.Body).Decode(&evt); err != nil {
+			logger.Error("Unable to parse StarEvent", "err", err)
+			http.Error(w, "invalid json", http.StatusBadRequest)
+		}
+		stargazer := Stargazer{
+			Action:      evt.GetAction(),
+			RepoName:    evt.Repo.GetFullName(),
+			RepoHTMLURL: evt.Repo.GetHTMLURL(),
+			Login:       evt.Sender.GetLogin(),
+			UserHTMLURL: evt.Sender.GetHTMLURL(),
+			StarredAt:   evt.StarredAt.Time,
+		}
+		if err := h(r.Context(), stargazer); err != nil {
+			logger.Error("Unable to handle StarEvent", "err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	return NewWebhook(secret, handler, logger)
 }
 
 // withLogger returns an HTTP middleware that adds a logger to the context of the request.

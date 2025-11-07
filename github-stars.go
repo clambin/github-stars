@@ -85,7 +85,7 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 
 	ctx = slogctx.NewWithContext(ctx, logger)
 
-	// on startup, scan all repos.  this will find any stars while we weren't running.
+	// on startup, scan all repos. This will find any stars while we weren't running.
 	before := time.Now()
 	logger.Info("starting scan")
 	if err = stars.Scan(ctx, cfg.User, client, store, cfg.Archived); err != nil {
@@ -93,10 +93,17 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 	}
 	logger.Info("scan complete", "duration_msec", time.Since(before).Milliseconds())
 
+	// start the Prometheus metrics server
+	go func() {
+		if err := cfg.Prom.Serve(ctx); err != nil {
+			logger.Error("failed to start Prometheus server", "err", err)
+		}
+	}()
+
 	// start the GitHub webhook handler
 	s := http.Server{
 		Addr:    cfg.GitHub.WebHook.Addr,
-		Handler: github.NewWebHook(cfg.GitHub.WebHook.Secret, stars.Handler(store), logger),
+		Handler: github.NewStarEventWebhook(cfg.GitHub.WebHook.Secret, stars.Handler(store), logger),
 	}
 
 	logger.Info("starting webhook server", "addr", cfg.GitHub.WebHook.Addr)

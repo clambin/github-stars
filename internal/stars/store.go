@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,8 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/clambin/github-stars/internal/github"
 	"github.com/clambin/github-stars/slogctx"
-	"github.com/google/go-github/v76/github"
 	"github.com/slack-go/slack"
 )
 
@@ -27,7 +28,7 @@ type RepoStars map[string]RepoStar
 
 // Store contains all stars for all repositories
 type Store struct {
-	Repos        map[string]RepoStars
+	Repos        map[string]map[string]RepoStar
 	DatabasePath string
 	lock         sync.RWMutex
 }
@@ -36,7 +37,7 @@ type Store struct {
 func NewStore(databasePath string) (*Store, error) {
 	store := Store{
 		DatabasePath: databasePath,
-		Repos:        make(map[string]RepoStars),
+		Repos:        make(map[string]map[string]RepoStar),
 	}
 	if err := store.load(); err != nil {
 		return nil, err
@@ -82,46 +83,39 @@ type Stargazer struct {
 
 // Add adds new stargazers to a repository.
 // Returns the new stargazers and an error if there was a problem saving the store to disk.
-func (s *Store) Add(repo *github.Repository, stargazers ...*github.Stargazer) ([]*github.Stargazer, error) {
+func (s *Store) Add(stargazers ...github.Stargazer) ([]github.Stargazer, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	repoFullName := repo.GetFullName()
-	r, ok := s.Repos[repoFullName]
-	if !ok {
-		r = make(RepoStars)
-	}
-	newStargazers := make([]*github.Stargazer, 0, len(stargazers))
-	for _, stargazer := range stargazers {
-		login := stargazer.GetUser().GetLogin()
-		if _, ok = r[login]; !ok {
-			newStargazers = append(newStargazers, stargazer)
+	added := make([]github.Stargazer, 0, len(stargazers))
+	for _, star := range stargazers {
+		if _, ok := s.Repos[star.RepoName]; !ok {
+			s.Repos[star.RepoName] = make(RepoStars)
 		}
-		r[login] = RepoStar{StarredAt: stargazer.GetStarredAt().Time}
+		if _, ok := s.Repos[star.RepoName][star.Login]; !ok {
+			s.Repos[star.RepoName][star.Login] = RepoStar{StarredAt: star.StarredAt}
+			added = append(added, star)
+		}
 	}
-	s.Repos[repoFullName] = r
-	return newStargazers, s.save()
+	return added, s.save()
 }
 
 // Delete removes stargazers from a repository.
 // Returns the removed stargazers and an error if there was a problem saving the store to disk.
-func (s *Store) Delete(repo *github.Repository, stargazers ...*github.Stargazer) ([]*github.Stargazer, error) {
+func (s *Store) Delete(stargazer ...github.Stargazer) ([]github.Stargazer, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	repoFullName := repo.GetFullName()
-	r, ok := s.Repos[repoFullName]
-	if !ok {
-		return nil, nil
-	}
-	removedStargazers := make([]*github.Stargazer, 0, len(stargazers))
-	for _, stargazer := range stargazers {
-		login := stargazer.GetUser().GetLogin()
-		if _, ok = r[login]; ok {
-			delete(r, login)
-			removedStargazers = append(removedStargazers, stargazer)
+	removed := make([]github.Stargazer, 0, len(stargazer))
+	for _, star := range stargazer {
+		if _, ok := s.Repos[star.RepoName]; !ok {
+			continue
 		}
+		if _, ok := s.Repos[star.RepoName][star.Login]; !ok {
+			continue
+		}
+		delete(s.Repos[star.RepoName], star.Login)
+		removed = append(removed, star)
 	}
-	s.Repos[repoFullName] = r
-	return removedStargazers, s.save()
+	return removed, s.save()
 }
 
 // NotifyingStore is a Store that notifies a Notifier when stargazers are added or removed.
@@ -144,36 +138,36 @@ func NewNotifyingStore(databaseDirectory string, notifiers Notifiers) (*Notifyin
 
 // Add adds new stargazers to a repository.
 // Notifies the Notifier if there were any new stargazers.
-func (s NotifyingStore) Add(ctx context.Context, repo *github.Repository, stargazers ...*github.Stargazer) error {
-	added, err := s.Store.Add(repo, stargazers...)
+func (s NotifyingStore) Add(ctx context.Context, stars ...github.Stargazer) error {
+	added, err := s.Store.Add(stars...)
 	if err == nil && len(added) > 0 {
-		s.Notify(ctx, true, repo, added...)
+		s.Notify(ctx, true, added)
 	}
 	return err
 }
 
 // Delete removes stargazers from a repository.
 // Notifies the Notifier if there were any removed stargazers.
-func (s NotifyingStore) Delete(ctx context.Context, repo *github.Repository, stargazers ...*github.Stargazer) error {
-	deleted, err := s.Store.Delete(repo, stargazers...)
+func (s NotifyingStore) Delete(ctx context.Context, stars ...github.Stargazer) error {
+	deleted, err := s.Store.Delete(stars...)
 	if err == nil && len(deleted) > 0 {
-		s.Notify(ctx, false, repo, stargazers...)
+		s.Notify(ctx, false, deleted)
 	}
 	return err
 }
 
 // Notifier notifies about added/removed stargazers.
 type Notifier interface {
-	Notify(ctx context.Context, added bool, repo *github.Repository, stargazers ...*github.Stargazer)
+	Notify(ctx context.Context, added bool, stars []github.Stargazer)
 }
 
 // Notifiers is a collection of Notifiers.
 type Notifiers []Notifier
 
 // Notify notifies all Notifiers.
-func (n Notifiers) Notify(ctx context.Context, added bool, repo *github.Repository, stargazers ...*github.Stargazer) {
+func (n Notifiers) Notify(ctx context.Context, added bool, stars []github.Stargazer) {
 	for _, notifier := range n {
-		notifier.Notify(ctx, added, repo, stargazers...)
+		notifier.Notify(ctx, added, stars)
 	}
 }
 
@@ -182,16 +176,18 @@ type SlogNotifier struct{}
 
 var _ Notifier = SlogNotifier{}
 
-func (s SlogNotifier) Notify(ctx context.Context, added bool, repo *github.Repository, stargazers ...*github.Stargazer) {
-	l := slogctx.FromContext(ctx).With("repository", repo.GetFullName())
-	var msg string
-	switch added {
-	case true:
-		msg = fmt.Sprintf("repo has %d new stargazers", len(stargazers))
-	case false:
-		msg = fmt.Sprintf("repo lost %d stargazers", len(stargazers))
+func (s SlogNotifier) Notify(ctx context.Context, added bool, stars []github.Stargazer) {
+	logger := slogctx.FromContext(ctx)
+	for repo, repoStars := range stargazersByRepo(stars) {
+		var msg string
+		switch added {
+		case true:
+			msg = fmt.Sprintf("repo has %d new stargazers", len(repoStars))
+		case false:
+			msg = fmt.Sprintf("repo lost %d stargazers", len(repoStars))
+		}
+		logger.Info(msg, slog.String("repo", repo))
 	}
-	l.Info(msg)
 }
 
 const (
@@ -200,7 +196,7 @@ const (
 
 // SlackNotifier is a Notifier that posts added/removed stargazers to a Slack channel using a webhook.
 type SlackNotifier struct {
-	// WebHookURL is the URL to the slack webhook
+	// WebHookURL is the URL to the Slack webhook
 	WebHookURL string
 	// MaximumUsers is the maximum number of users to notify about. Default is 5.
 	// If the number of stargazers is greater than this, SlackNotifier only notifies the number of users.
@@ -209,13 +205,15 @@ type SlackNotifier struct {
 
 var _ Notifier = SlackNotifier{}
 
-func (s SlackNotifier) Notify(ctx context.Context, added bool, repo *github.Repository, stargazers ...*github.Stargazer) {
-	err := slack.PostWebhook(s.WebHookURL, &slack.WebhookMessage{
-		Text:        s.makeMessage(repo, stargazers, added),
-		UnfurlLinks: false,
-	})
-	if err != nil {
-		slogctx.FromContext(ctx).Warn("Failed to post message", "err", err)
+func (s SlackNotifier) Notify(ctx context.Context, added bool, stars []github.Stargazer) {
+	for _, repoStars := range stargazersByRepo(stars) {
+		err := slack.PostWebhook(s.WebHookURL, &slack.WebhookMessage{
+			Text:        s.makeMessage(repoStars, added),
+			UnfurlLinks: false,
+		})
+		if err != nil {
+			slogctx.FromContext(ctx).Warn("Failed to post message", "err", err)
+		}
 	}
 }
 
@@ -224,20 +222,32 @@ var action = map[bool]string{
 	false: "lost",
 }
 
-func (s SlackNotifier) makeMessage(repo *github.Repository, gazers []*github.Stargazer, added bool) string {
+func (s SlackNotifier) makeMessage(gazers []github.Stargazer, added bool) string {
 	var userList string
 	if len(gazers) > 1 {
 		userList = strconv.Itoa(len(gazers)) + " users"
 	}
+	var repoName, repoHTMLURL string
+	users := make([]string, 0, len(gazers))
+	for _, star := range gazers {
+		users = append(users, "<"+star.UserHTMLURL+"|@"+star.Login+">")
+		repoName = star.RepoName
+		repoHTMLURL = star.RepoHTMLURL
+	}
+
 	if len(gazers) <= cmp.Or(s.MaximumUsers, defaultMaximumUsers) {
 		if len(gazers) > 1 {
 			userList += ": "
 		}
-		users := make([]string, len(gazers))
-		for i, gazer := range gazers {
-			users[i] = "<" + gazer.GetUser().GetHTMLURL() + "|@" + gazer.GetUser().GetLogin() + ">"
-		}
 		userList += strings.Join(users, ", ")
 	}
-	return "Repo <" + repo.GetHTMLURL() + "|" + repo.GetFullName() + "> " + action[added] + " a star from " + userList
+	return "Repo <" + repoHTMLURL + "|" + repoName + "> " + action[added] + " a star from " + userList
+}
+
+func stargazersByRepo(stargazer []github.Stargazer) map[string][]github.Stargazer {
+	out := make(map[string][]github.Stargazer)
+	for _, stargazers := range stargazer {
+		out[stargazers.RepoName] = append(out[stargazers.RepoName], stargazers)
+	}
+	return out
 }

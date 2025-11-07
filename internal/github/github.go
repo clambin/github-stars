@@ -2,11 +2,20 @@ package github
 
 import (
 	"context"
-	"iter"
 	"strings"
+	"time"
 
-	"github.com/google/go-github/v76/github"
+	"github.com/google/go-github/v77/github"
 )
+
+type Stargazer struct {
+	Action      string
+	RepoName    string
+	RepoHTMLURL string
+	Login       string
+	UserHTMLURL string
+	StarredAt   time.Time
+}
 
 type Client struct {
 	Repositories
@@ -31,34 +40,58 @@ func NewGitHubClient(token string) *Client {
 
 const recordsPerPage = 100
 
-func (c Client) GetUserRepos(ctx context.Context, user string) iter.Seq2[*github.Repository, error] {
-	return func(yield func(*github.Repository, error) bool) {
-		listOptions := github.RepositoryListByUserOptions{ListOptions: github.ListOptions{PerPage: recordsPerPage}}
-		for {
-			var resp *github.Response
-			// TODO: ListByAuthenticatedUser() could list all repos the user (token) has access to?
-			repoPage, resp, err := c.ListByUser(ctx, user, &listOptions)
-			if err != nil {
-				yield(nil, err)
-				return
-			}
-			for _, repo := range repoPage {
-				if !yield(repo, err) {
-					return
-				}
-			}
-			if resp.NextPage == 0 {
-				return
-			}
-			listOptions.Page = resp.NextPage
+func (c Client) Stargazers(ctx context.Context, user string, includeArchived bool) ([]Stargazer, error) {
+	var stargazers []Stargazer
+
+	repos, err := c.userRepos(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	for _, repo := range repos {
+		if repo.GetArchived() && !includeArchived {
+			continue
 		}
+		gazers, err := c.starGazers(ctx, repo)
+		if err != nil {
+			return nil, err
+		}
+		for _, gazer := range gazers {
+			stargazers = append(stargazers, Stargazer{
+				RepoName:    repo.GetFullName(),
+				RepoHTMLURL: repo.GetHTMLURL(),
+				Login:       gazer.GetUser().GetLogin(),
+				UserHTMLURL: gazer.GetUser().GetHTMLURL(),
+				StarredAt:   gazer.GetStarredAt().Time,
+			})
+		}
+	}
+	return stargazers, nil
+}
+
+func (c Client) userRepos(ctx context.Context, user string) ([]*github.Repository, error) {
+	var repos []*github.Repository
+	listOptions := github.RepositoryListByUserOptions{ListOptions: github.ListOptions{PerPage: recordsPerPage}}
+
+	for {
+		var resp *github.Response
+		// TODO: ListByAuthenticatedUser() could list all repos the user (token) has access to?
+		repoPage, resp, err := c.ListByUser(ctx, user, &listOptions)
+		if err != nil {
+			return nil, err
+		}
+		repos = append(repos, repoPage...)
+		if resp.NextPage == 0 {
+			return repos, nil
+		}
+		listOptions.Page = resp.NextPage
 	}
 }
 
-func (c Client) GetStarGazers(ctx context.Context, repo *github.Repository) ([]*github.Stargazer, error) {
+func (c Client) starGazers(ctx context.Context, repo *github.Repository) ([]*github.Stargazer, error) {
 	var starGazers []*github.Stargazer
 	listOptions := github.ListOptions{PerPage: recordsPerPage}
 
+	// repo.Owner.GetLogin() ???
 	user := strings.TrimSuffix(repo.GetFullName(), "/"+repo.GetName())
 
 	for {
