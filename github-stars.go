@@ -70,10 +70,9 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 	// setup
 	logger := cfg.Logger(os.Stderr, nil)
 	logger.Info("starting github-stars", "version", version)
+	ctx = slogctx.NewWithContext(ctx, logger)
 
-	notifiers := stars.Notifiers{
-		stars.SlogNotifier{},
-	}
+	notifiers := stars.Notifiers{stars.SlogNotifier{}}
 	if cfg.Slack.Webhook != "" {
 		notifiers = append(notifiers, stars.SlackNotifier{WebHookURL: cfg.Slack.Webhook})
 	}
@@ -83,15 +82,13 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 		return fmt.Errorf("failed to create store: %w", err)
 	}
 
-	ctx = slogctx.NewWithContext(ctx, logger)
-
 	// on startup, scan all repos. This will find any stars while we weren't running.
-	before := time.Now()
+	start := time.Now()
 	logger.Info("starting scan")
 	if err = stars.Scan(ctx, cfg.User, client, store, cfg.Archived); err != nil {
 		return fmt.Errorf("failed to scan: %w", err)
 	}
-	logger.Info("scan complete", "duration_msec", time.Since(before).Milliseconds())
+	logger.Info("scan complete", "duration_msec", time.Since(start).Milliseconds())
 
 	// start the Prometheus metrics server
 	go func() {
@@ -102,8 +99,12 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 
 	// start the GitHub webhook handler
 	s := http.Server{
-		Addr:    cfg.GitHub.WebHook.Addr,
-		Handler: github.NewStarEventWebhook(cfg.GitHub.WebHook.Secret, stars.Handler(store), logger),
+		Addr: cfg.GitHub.WebHook.Addr,
+		Handler: github.WebhookHandler(
+			github.WebhookHandlers{StarEvent: stars.Handler(store)},
+			cfg.GitHub.WebHook.Secret,
+			logger,
+		),
 	}
 
 	logger.Info("starting webhook server", "addr", cfg.GitHub.WebHook.Addr)

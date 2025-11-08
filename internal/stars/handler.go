@@ -9,8 +9,9 @@ import (
 	"github.com/clambin/github-stars/slogctx"
 )
 
+// Handler returns a webhook handler for GitHub star events.
 func Handler(store *NotifyingStore) func(ctx context.Context, stargazer github.Stargazer) error {
-	return func(ctx context.Context, stargazer github.Stargazer) error {
+	return func(ctx context.Context, stargazer github.Stargazer) (err error) {
 		// Get logger
 		logger := slogctx.FromContext(ctx).With(
 			slog.String("repo", stargazer.RepoName),
@@ -21,20 +22,20 @@ func Handler(store *NotifyingStore) func(ctx context.Context, stargazer github.S
 		switch stargazer.Action {
 		case "created":
 			logger.Debug("adding new stargazer")
-			if err := store.Add(ctx, stargazer); err != nil {
-				logger.Error("Unable to store star", "err", err)
-				return fmt.Errorf("add: %w", err)
+			if err = store.Add(ctx, stargazer); err != nil {
+				err = fmt.Errorf("add: %w", err)
 			}
 		case "deleted":
 			logger.Debug("removing a stargazer")
-			if err := store.Delete(ctx, stargazer); err != nil {
-				logger.Error("Unable to store star", "err", err)
-				return fmt.Errorf("delete: %w", err)
+			if err = store.Delete(ctx, stargazer); err != nil {
+				err = fmt.Errorf("delete: %w", err)
 			}
 		default:
-			logger.Warn("Unsupported action", "action", stargazer.Action)
-			return fmt.Errorf("unsupported action: %s", stargazer.Action)
+			err = fmt.Errorf("unsupported action: %s", stargazer.Action)
 		}
-		return nil
+		if err != nil {
+			logger.Error("failed to handle event", "err", err)
+		}
+		return err
 	}
 }

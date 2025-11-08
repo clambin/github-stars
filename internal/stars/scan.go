@@ -28,8 +28,9 @@ func Scan(
 		return fmt.Errorf("stars: %w", err)
 	}
 
-	// TODO: this only adds stars to an existing store.  if someone unstarred a repo while we were down, it won't be removed.
-	// to fix that, we need to iterate over stargazers in the store and remove any that are not in the new list.
+	// TODO: this only adds stars to an existing store.
+	//   if someone removed a star from a repo while we were down, it won't be removed from the store.
+	//   to fix that, we need to iterate over stargazers in the store and remove any that are not in the new list.
 
 	if err = s.Add(ctx, stargazers...); err != nil {
 		return fmt.Errorf("add: %w", err)

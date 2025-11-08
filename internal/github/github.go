@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v77/github"
 )
@@ -26,6 +27,46 @@ func NewGitHubClient(token string) *Client {
 		Repositories: client.Repositories,
 		Activity:     client.Activity,
 	}
+}
+
+// Stargazer represents a star from one user for one repository.
+type Stargazer struct {
+	Action      string
+	RepoName    string
+	RepoHTMLURL string
+	Login       string
+	UserHTMLURL string
+	StarredAt   time.Time
+}
+
+// Stargazers returns the list of stargazers for a user's repositories.
+// If includeArchived is true, archived repositories are included.
+func (c Client) Stargazers(ctx context.Context, user string, includeArchived bool) ([]Stargazer, error) {
+	var stargazers []Stargazer
+
+	repos, err := c.userRepos(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	for _, repo := range repos {
+		if repo.GetArchived() && !includeArchived {
+			continue
+		}
+		gazers, err := c.starGazers(ctx, repo)
+		if err != nil {
+			return nil, err
+		}
+		for _, gazer := range gazers {
+			stargazers = append(stargazers, Stargazer{
+				RepoName:    repo.GetFullName(),
+				RepoHTMLURL: repo.GetHTMLURL(),
+				Login:       gazer.GetUser().GetLogin(),
+				UserHTMLURL: gazer.GetUser().GetHTMLURL(),
+				StarredAt:   gazer.GetStarredAt().Time,
+			})
+		}
+	}
+	return stargazers, nil
 }
 
 const recordsPerPage = 100

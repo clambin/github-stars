@@ -156,6 +156,12 @@ func (s NotifyingStore) Delete(ctx context.Context, stars ...github.Stargazer) e
 	return err
 }
 
+func (s NotifyingStore) Set(ctx context.Context, stars []github.Stargazer) error {
+	// set the store to the given star gazers
+	// generate notifications added/removed vs current store
+	panic("not implemented")
+}
+
 // Notifier notifies about added/removed stargazers.
 type Notifier interface {
 	Notify(ctx context.Context, added bool, stars []github.Stargazer)
@@ -194,7 +200,7 @@ const (
 	defaultMaximumUsers = 5
 )
 
-// SlackNotifier is a Notifier that posts added/removed stargazers to a Slack channel using a webhook.
+// SlackNotifier is a Notifier that posts added/removed stargazers to a Slack channel.
 type SlackNotifier struct {
 	// WebHookURL is the URL to the Slack webhook
 	WebHookURL string
