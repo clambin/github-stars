@@ -272,9 +272,9 @@ type SlackNotifier struct {
 var _ Notifier = SlackNotifier{}
 
 func (s SlackNotifier) Notify(ctx context.Context, added bool, stars []github.Stargazer) {
-	for _, repoStars := range stargazersByRepo(stars) {
+	for _, stargazers := range stargazersByRepo(stars) {
 		err := slack.PostWebhook(s.WebHookURL, &slack.WebhookMessage{
-			Text:        s.makeMessage(repoStars, added),
+			Text:        s.makeMessage(stargazers, added),
 			UnfurlLinks: false,
 		})
 		if err != nil {
@@ -295,8 +295,7 @@ func (s SlackNotifier) makeMessage(gazers []github.Stargazer, added bool) string
 	}
 
 	// Determine repo information from the first stargazer
-	repoName := gazers[0].RepoName
-	repoHTMLURL := gazers[0].RepoHTMLURL
+	repoName := slackFormatRepo(gazers[0])
 
 	// maximum users to list individually
 	maxUsers := cmp.Or(s.MaximumUsers, defaultMaximumUsers)
@@ -313,12 +312,12 @@ func (s SlackNotifier) makeMessage(gazers []github.Stargazer, added bool) string
 		// Build list of user mentions
 		users := make([]string, len(gazers))
 		for i := range gazers {
-			users[i] = "<" + gazers[i].UserHTMLURL + "|@" + gazers[i].Login + ">"
+			users[i] = slackFormatUser(gazers[i])
 		}
 		userList += strings.Join(users, ", ")
 	}
 
-	return "Repo <" + repoHTMLURL + "|" + repoName + "> " + action[added] + " a star from " + userList
+	return "Repo " + repoName + " " + action[added] + " a star from " + userList
 }
 
 func stargazersByRepo(stargazer []github.Stargazer) map[string][]github.Stargazer {
@@ -327,4 +326,18 @@ func stargazersByRepo(stargazer []github.Stargazer) map[string][]github.Stargaze
 		out[stargazers.RepoName] = append(out[stargazers.RepoName], stargazers)
 	}
 	return out
+}
+
+func slackFormatRepo(stargazer github.Stargazer) string {
+	if repoHTMLURL := stargazer.RepoHTMLURL; repoHTMLURL != "" {
+		return "<" + repoHTMLURL + "|" + stargazer.RepoName + ">"
+	}
+	return stargazer.RepoName
+}
+
+func slackFormatUser(stargazer github.Stargazer) string {
+	if userHTMLURL := stargazer.UserHTMLURL; userHTMLURL != "" {
+		return "<" + userHTMLURL + "|@" + stargazer.Login + ">"
+	}
+	return stargazer.Login
 }

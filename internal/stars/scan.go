@@ -13,13 +13,7 @@ type Client interface {
 }
 
 // Scan retrieves all repositories for the user, gets the stars for each repository and adds new ones to the Store.
-func Scan(
-	ctx context.Context,
-	user string,
-	c Client,
-	s *NotifyingStore,
-	includeArchived bool,
-) error {
+func Scan(ctx context.Context, user string, c Client, s *NotifyingStore, includeArchived bool) error {
 	logger := slogctx.FromContext(ctx)
 	logger.Debug("scanning all user repos")
 
