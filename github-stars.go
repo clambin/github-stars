@@ -101,7 +101,7 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 
 	// start the Prometheus metrics server
 	go func() {
-		if err := cfg.Prom.Serve(ctx); err != nil {
+		if err := cfg.Serve(ctx); err != nil {
 			logger.Error("failed to start Prometheus server", "err", err)
 		}
 	}()

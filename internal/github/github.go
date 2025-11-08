@@ -31,12 +31,12 @@ func NewGitHubClient(token string) *Client {
 
 // Stargazer represents a star from one user for one repository.
 type Stargazer struct {
-	Action      string
+	StarredAt   time.Time
+	Action      string `json:"-"`
 	RepoName    string
 	RepoHTMLURL string
 	Login       string
 	UserHTMLURL string
-	StarredAt   time.Time
 }
 
 // Stargazers returns the list of stargazers for a user's repositories.

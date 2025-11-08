@@ -14,8 +14,8 @@ import (
 
 func TestRun(t *testing.T) {
 	client := fakeClient{stargazers: []github.Stargazer{
-		{"", "user1/foo", "", "user1", "", time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC)},
-		{"", "user1/foo", "", "user2", "", time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC)},
+		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "user1/foo", "", "user1", ""},
+		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "user1/foo", "", "user2", ""},
 	}}
 	cfg := configuration{
 		User:      "user1",
