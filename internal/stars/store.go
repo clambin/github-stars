@@ -4,81 +4,81 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/clambin/github-stars/internal/github"
 	"github.com/clambin/github-stars/slogctx"
 	"github.com/slack-go/slack"
 )
 
-// RepoStar is a single star for a repository
-type RepoStar struct {
-	StarredAt time.Time `json:"starred_at"`
-}
-
-// RepoStars contains all stars for a repository
-type RepoStars map[string]RepoStar
-
 // Store contains all stars for all repositories
 type Store struct {
-	Repos        map[string]map[string]RepoStar
-	DatabasePath string
+	stargazers   map[string]map[string]github.Stargazer
+	databasePath string
 	lock         sync.RWMutex
 }
 
 // NewStore creates a new Store
-func NewStore(databasePath string) (*Store, error) {
-	store := Store{
-		DatabasePath: databasePath,
-		Repos:        make(map[string]map[string]RepoStar),
-	}
-	if err := store.load(); err != nil {
+func NewStore(databasePath string) (store *Store, err error) {
+	store = &Store{databasePath: databasePath}
+	f, err := os.Open(filepath.Join(databasePath, "stargazers.json"))
+	switch {
+	case err == nil:
+		defer func() { _ = f.Close() }()
+		var err2 *json.UnmarshalTypeError
+		if store.stargazers, err = load(f); errors.As(err, &err2) {
+			// store was created with an older version. reset it. Scan() will repopulate it.
+			// (yeah, a bit hacky)
+			store.stargazers = make(map[string]map[string]github.Stargazer)
+			err = nil
+		}
+	case os.IsNotExist(err):
+		store.stargazers = make(map[string]map[string]github.Stargazer)
+		err = nil
+	default:
 		return nil, err
 	}
-	return &store, nil
+	return store, err
 }
 
 // load loads the store from disk
-func (s *Store) load() error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	f, err := os.Open(filepath.Join(s.DatabasePath, "stargazers.json"))
-	if os.IsNotExist(err) {
-		return nil
+func load(r io.Reader) (map[string]map[string]github.Stargazer, error) {
+	var stargazers []github.Stargazer
+	if err := json.NewDecoder(r).Decode(&stargazers); err != nil {
+		return nil, fmt.Errorf("decode: %w", err)
 	}
-	if err != nil {
-		return fmt.Errorf("open: %w", err)
-	}
-	defer func() { _ = f.Close() }()
-	return json.NewDecoder(f).Decode(&s.Repos)
+	return indexedStargazers(stargazers), nil
 }
 
 // save saves the store to disk
 func (s *Store) save() error {
-	f, err := os.Create(filepath.Join(s.DatabasePath, "stargazers.json"))
+	var stargazers []github.Stargazer
+	for _, users := range s.stargazers {
+		for _, rs := range users {
+			stargazers = append(stargazers, rs)
+		}
+	}
+
+	f, err := os.Create(filepath.Join(s.databasePath, "stargazers.json"))
 	if err != nil {
 		return fmt.Errorf("open: %w", err)
 	}
 	defer func() { _ = f.Close() }()
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "  ")
-	if err = enc.Encode(s.Repos); err != nil {
+	if err = enc.Encode(stargazers); err != nil {
 		_ = f.Close()
 		return fmt.Errorf("encode: %w", err)
 	}
 	return f.Close()
-}
-
-type Stargazer struct {
-	StarredAt time.Time
-	User      string
 }
 
 // Add adds new stargazers to a repository.
@@ -88,15 +88,19 @@ func (s *Store) Add(stargazers ...github.Stargazer) ([]github.Stargazer, error) 
 	defer s.lock.Unlock()
 	added := make([]github.Stargazer, 0, len(stargazers))
 	for _, star := range stargazers {
-		if _, ok := s.Repos[star.RepoName]; !ok {
-			s.Repos[star.RepoName] = make(RepoStars)
+		if _, ok := s.stargazers[star.RepoName]; !ok {
+			s.stargazers[star.RepoName] = make(map[string]github.Stargazer)
 		}
-		if _, ok := s.Repos[star.RepoName][star.Login]; !ok {
-			s.Repos[star.RepoName][star.Login] = RepoStar{StarredAt: star.StarredAt}
+		if _, ok := s.stargazers[star.RepoName][star.Login]; !ok {
+			s.stargazers[star.RepoName][star.Login] = star
 			added = append(added, star)
 		}
 	}
-	return added, s.save()
+	var err error
+	if len(added) > 0 {
+		err = s.save()
+	}
+	return added, err
 }
 
 // Delete removes stargazers from a repository.
@@ -106,13 +110,13 @@ func (s *Store) Delete(stargazer ...github.Stargazer) ([]github.Stargazer, error
 	defer s.lock.Unlock()
 	removed := make([]github.Stargazer, 0, len(stargazer))
 	for _, star := range stargazer {
-		if _, ok := s.Repos[star.RepoName]; !ok {
+		if _, ok := s.stargazers[star.RepoName]; !ok {
 			continue
 		}
-		if _, ok := s.Repos[star.RepoName][star.Login]; !ok {
+		if _, ok := s.stargazers[star.RepoName][star.Login]; !ok {
 			continue
 		}
-		delete(s.Repos[star.RepoName], star.Login)
+		delete(s.stargazers[star.RepoName], star.Login)
 		removed = append(removed, star)
 	}
 	return removed, s.save()
@@ -122,53 +126,43 @@ func (s *Store) Delete(stargazer ...github.Stargazer) ([]github.Stargazer, error
 // It returns the stargazers that were added and those that were removed.
 func (s *Store) Set(stargazers []github.Stargazer) ([]github.Stargazer, []github.Stargazer, error) {
 	// Build desired state: repo -> login -> RepoStar
-	desired := make(map[string]map[string]RepoStar)
-	for _, sg := range stargazers {
-		if _, ok := desired[sg.RepoName]; !ok {
-			desired[sg.RepoName] = make(map[string]RepoStar)
-		}
-		desired[sg.RepoName][sg.Login] = RepoStar{StarredAt: sg.StarredAt}
-	}
+	desired := indexedStargazers(stargazers)
+	added := repoDiff(desired, s.stargazers)
+	removed := repoDiff(s.stargazers, desired)
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
-	var added []github.Stargazer
-	var removed []github.Stargazer
-
-	// Remove entries that are no longer desired
-	for repo, users := range s.Repos {
-		for login, rs := range users {
-			if _, ok := desired[repo]; !ok {
-				// repo no longer has any desired stargazers
-				removed = append(removed, github.Stargazer{RepoName: repo, Login: login, StarredAt: rs.StarredAt})
-				delete(users, login)
-				continue
-			}
-			if _, ok := desired[repo][login]; !ok {
-				removed = append(removed, github.Stargazer{RepoName: repo, Login: login, StarredAt: rs.StarredAt})
-				delete(users, login)
-			}
-		}
-	}
-
-	// Add missing desired entries
-	for repo, users := range desired {
-		if _, ok := s.Repos[repo]; !ok {
-			s.Repos[repo] = make(map[string]RepoStar)
-		}
-		for login, rs := range users {
-			if _, ok := s.Repos[repo][login]; !ok {
-				s.Repos[repo][login] = rs
-				added = append(added, github.Stargazer{RepoName: repo, Login: login, StarredAt: rs.StarredAt})
-			}
-		}
-	}
-
+	s.stargazers = desired
 	if err := s.save(); err != nil {
 		return nil, nil, err
 	}
 	return added, removed, nil
+}
+
+// indexedStargazers indexes the stargazers by repository and user.
+func indexedStargazers(stargazers []github.Stargazer) map[string]map[string]github.Stargazer {
+	index := make(map[string]map[string]github.Stargazer)
+	for _, star := range stargazers {
+		if _, ok := index[star.RepoName]; !ok {
+			index[star.RepoName] = make(map[string]github.Stargazer)
+		}
+		index[star.RepoName][star.Login] = star
+	}
+	return index
+}
+
+// repoDiff returns the stargazers from a that are not in b.
+func repoDiff(a, b map[string]map[string]github.Stargazer) []github.Stargazer {
+	var diff []github.Stargazer
+
+	for repo, users := range a {
+		for user, star := range users {
+			if _, ok := b[repo][user]; !ok {
+				diff = append(diff, star)
+			}
+		}
+	}
+	return diff
 }
 
 // NotifyingStore is a Store that notifies a Notifier when stargazers are added or removed.
