@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -78,8 +81,14 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 	}
 
 	store, err := stars.NewNotifyingStore(cfg.Directory, notifiers)
+	var jsonErr *json.UnmarshalTypeError
+	if errors.As(err, &jsonErr) {
+		logger.Warn("failed to load database. reinitializing ....", "err", err)
+		_ = os.Remove(filepath.Join(cfg.Directory, stars.StoreFilename))
+		store, err = stars.NewNotifyingStore(cfg.Directory, notifiers)
+	}
 	if err != nil {
-		return fmt.Errorf("failed to create store: %w", err)
+		return fmt.Errorf("failed to load database: %w", err)
 	}
 
 	// on startup, scan all repos. This will find any stars while we weren't running.

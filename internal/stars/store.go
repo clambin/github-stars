@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,6 +18,8 @@ import (
 	"github.com/slack-go/slack"
 )
 
+const StoreFilename = "stargazers.json"
+
 // Store contains all stars for all repositories
 type Store struct {
 	stargazers   map[string]map[string]github.Stargazer
@@ -29,17 +30,11 @@ type Store struct {
 // NewStore creates a new Store
 func NewStore(databasePath string) (store *Store, err error) {
 	store = &Store{databasePath: databasePath}
-	f, err := os.Open(filepath.Join(databasePath, "stargazers.json"))
+	f, err := os.Open(filepath.Join(databasePath, StoreFilename))
 	switch {
 	case err == nil:
 		defer func() { _ = f.Close() }()
-		var err2 *json.UnmarshalTypeError
-		if store.stargazers, err = load(f); errors.As(err, &err2) {
-			// store was created with an older version. reset it. Scan() will repopulate it.
-			// (yeah, a bit hacky)
-			store.stargazers = make(map[string]map[string]github.Stargazer)
-			err = nil
-		}
+		store.stargazers, err = load(f)
 	case os.IsNotExist(err):
 		store.stargazers = make(map[string]map[string]github.Stargazer)
 		err = nil
