@@ -118,6 +118,59 @@ func (s *Store) Delete(stargazer ...github.Stargazer) ([]github.Stargazer, error
 	return removed, s.save()
 }
 
+// Set updates the store to exactly match the provided stargazers per repository.
+// It returns the stargazers that were added and those that were removed.
+func (s *Store) Set(stargazers []github.Stargazer) ([]github.Stargazer, []github.Stargazer, error) {
+	// Build desired state: repo -> login -> RepoStar
+	desired := make(map[string]map[string]RepoStar)
+	for _, sg := range stargazers {
+		if _, ok := desired[sg.RepoName]; !ok {
+			desired[sg.RepoName] = make(map[string]RepoStar)
+		}
+		desired[sg.RepoName][sg.Login] = RepoStar{StarredAt: sg.StarredAt}
+	}
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	var added []github.Stargazer
+	var removed []github.Stargazer
+
+	// Remove entries that are no longer desired
+	for repo, users := range s.Repos {
+		for login, rs := range users {
+			if _, ok := desired[repo]; !ok {
+				// repo no longer has any desired stargazers
+				removed = append(removed, github.Stargazer{RepoName: repo, Login: login, StarredAt: rs.StarredAt})
+				delete(users, login)
+				continue
+			}
+			if _, ok := desired[repo][login]; !ok {
+				removed = append(removed, github.Stargazer{RepoName: repo, Login: login, StarredAt: rs.StarredAt})
+				delete(users, login)
+			}
+		}
+	}
+
+	// Add missing desired entries
+	for repo, users := range desired {
+		if _, ok := s.Repos[repo]; !ok {
+			s.Repos[repo] = make(map[string]RepoStar)
+		}
+		for login, rs := range users {
+			if _, ok := s.Repos[repo][login]; !ok {
+				s.Repos[repo][login] = rs
+				added = append(added, github.Stargazer{RepoName: repo, Login: login, StarredAt: rs.StarredAt})
+			}
+		}
+	}
+
+	if err := s.save(); err != nil {
+		return nil, nil, err
+	}
+	return added, removed, nil
+}
+
 // NotifyingStore is a Store that notifies a Notifier when stargazers are added or removed.
 type NotifyingStore struct {
 	*Store
@@ -156,10 +209,17 @@ func (s NotifyingStore) Delete(ctx context.Context, stars ...github.Stargazer) e
 	return err
 }
 
+// Set updates the store to the provided stargazers.
+// Notifies the Notifier if there were any new or removed stargazers.
 func (s NotifyingStore) Set(ctx context.Context, stars []github.Stargazer) error {
-	// set the store to the given star gazers
-	// generate notifications added/removed vs current store
-	panic("not implemented")
+	added, deleted, err := s.Store.Set(stars)
+	if err == nil && len(added) > 0 {
+		s.Notify(ctx, true, added)
+	}
+	if err == nil && len(deleted) > 0 {
+		s.Notify(ctx, false, deleted)
+	}
+	return err
 }
 
 // Notifier notifies about added/removed stargazers.

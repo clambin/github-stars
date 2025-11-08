@@ -54,6 +54,21 @@ func TestStore(t *testing.T) {
 	deleted, err = store.Delete(toAdd...)
 	require.NoError(t, err)
 	require.Empty(t, deleted)
+
+	// reset the store to its initial state
+	_, err = store.Add(toAdd...)
+	require.NoError(t, err)
+
+	// Set the stargazers with new records.
+	added, deleted, err = store.Set([]github.Stargazer{
+		{"", "foo/bar", "", "user1", "", time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC)},
+		{"", "foo/bar", "", "user3", "", time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC)},
+	})
+	require.NoError(t, err)
+	require.Len(t, added, 1)
+	require.Len(t, deleted, 1)
+	require.Equal(t, "user3", added[0].Login)
+	require.Equal(t, "user2", deleted[0].Login)
 }
 
 func TestNotifyingStore(t *testing.T) {
