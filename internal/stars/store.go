@@ -229,24 +229,35 @@ var action = map[bool]string{
 }
 
 func (s SlackNotifier) makeMessage(gazers []github.Stargazer, added bool) string {
+	// Guard against empty input (shouldn't normally happen)
+	if len(gazers) == 0 {
+		return ""
+	}
+
+	// Determine repo information from the first stargazer
+	repoName := gazers[0].RepoName
+	repoHTMLURL := gazers[0].RepoHTMLURL
+
+	// maximum users to list individually
+	maxUsers := cmp.Or(s.MaximumUsers, defaultMaximumUsers)
+
+	// Create the userList text depending on the number of gazers
 	var userList string
 	if len(gazers) > 1 {
 		userList = strconv.Itoa(len(gazers)) + " users"
 	}
-	var repoName, repoHTMLURL string
-	users := make([]string, 0, len(gazers))
-	for _, star := range gazers {
-		users = append(users, "<"+star.UserHTMLURL+"|@"+star.Login+">")
-		repoName = star.RepoName
-		repoHTMLURL = star.RepoHTMLURL
-	}
-
-	if len(gazers) <= cmp.Or(s.MaximumUsers, defaultMaximumUsers) {
+	if len(gazers) <= maxUsers {
 		if len(gazers) > 1 {
 			userList += ": "
 		}
+		// Build list of user mentions
+		users := make([]string, len(gazers))
+		for i := range gazers {
+			users[i] = "<" + gazers[i].UserHTMLURL + "|@" + gazers[i].Login + ">"
+		}
 		userList += strings.Join(users, ", ")
 	}
+
 	return "Repo <" + repoHTMLURL + "|" + repoName + "> " + action[added] + " a star from " + userList
 }
 
