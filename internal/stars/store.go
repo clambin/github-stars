@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -34,7 +33,13 @@ func NewStore(databasePath string) (store *Store, err error) {
 	switch {
 	case err == nil:
 		defer func() { _ = f.Close() }()
-		store.stargazers, err = load(f)
+		var stargazers []github.Stargazer
+		if err = json.NewDecoder(f).Decode(&stargazers); err != nil {
+			return nil, fmt.Errorf("decode: %w", err)
+		}
+		if len(stargazers) > 0 {
+			store.stargazers = indexedStargazers(stargazers)
+		}
 	case os.IsNotExist(err):
 		store.stargazers = make(map[string]map[string]github.Stargazer)
 		err = nil
@@ -42,15 +47,6 @@ func NewStore(databasePath string) (store *Store, err error) {
 		return nil, err
 	}
 	return store, err
-}
-
-// load loads the store from disk
-func load(r io.Reader) (map[string]map[string]github.Stargazer, error) {
-	var stargazers []github.Stargazer
-	if err := json.NewDecoder(r).Decode(&stargazers); err != nil {
-		return nil, fmt.Errorf("decode: %w", err)
-	}
-	return indexedStargazers(stargazers), nil
 }
 
 // save saves the store to disk
