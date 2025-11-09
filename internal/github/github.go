@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v77/github"
+	"github.com/google/go-github/v78/github"
 )
 
 type Client struct {
@@ -31,12 +31,12 @@ func NewGitHubClient(token string) *Client {
 
 // Stargazer represents a star from one user for one repository.
 type Stargazer struct {
-	StarredAt   time.Time
-	Action      string `json:"-"`
-	RepoName    string
-	RepoHTMLURL string
-	Login       string
-	UserHTMLURL string
+	StarredAt   time.Time `json:"starred_at"`
+	Action      string    `json:"-"`
+	RepoName    string    `json:"repo_name"`
+	RepoHTMLURL string    `json:"repo_html_url"`
+	Login       string    `json:"login"`
+	UserHTMLURL string    `json:"user_html_url"`
 }
 
 // Stargazers returns the list of stargazers for a user's repositories.

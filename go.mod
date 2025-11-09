@@ -5,7 +5,7 @@ go 1.25
 require (
 	codeberg.org/clambin/go-common/flagger v0.3.0
 	codeberg.org/clambin/go-common/httputils v0.4.0
-	github.com/google/go-github/v77 v77.0.0
+	github.com/google/go-github/v78 v78.0.0
 	github.com/slack-go/slack v0.17.3
 	github.com/stretchr/testify v1.11.1
 )
