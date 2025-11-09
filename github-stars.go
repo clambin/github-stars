@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -70,33 +73,47 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 	// setup
 	logger := cfg.Logger(os.Stderr, nil)
 	logger.Info("starting github-stars", "version", version)
+	ctx = slogctx.NewWithContext(ctx, logger)
 
-	notifiers := stars.Notifiers{
-		stars.SlogNotifier{},
-	}
+	notifiers := stars.Notifiers{stars.SlogNotifier{}}
 	if cfg.Slack.Webhook != "" {
 		notifiers = append(notifiers, stars.SlackNotifier{WebHookURL: cfg.Slack.Webhook})
 	}
 
 	store, err := stars.NewNotifyingStore(cfg.Directory, notifiers)
+	var jsonErr *json.UnmarshalTypeError
+	if errors.As(err, &jsonErr) {
+		logger.Warn("failed to load database. reinitializing ....", "err", err)
+		_ = os.Remove(filepath.Join(cfg.Directory, stars.StoreFilename))
+		store, err = stars.NewNotifyingStore(cfg.Directory, notifiers)
+	}
 	if err != nil {
-		return fmt.Errorf("failed to create store: %w", err)
+		return fmt.Errorf("failed to load database: %w", err)
 	}
 
-	ctx = slogctx.NewWithContext(ctx, logger)
-
-	// on startup, scan all repos.  this will find any stars while we weren't running.
-	before := time.Now()
+	// on startup, scan all repos. This will find any stars while we weren't running.
+	start := time.Now()
 	logger.Info("starting scan")
 	if err = stars.Scan(ctx, cfg.User, client, store, cfg.Archived); err != nil {
 		return fmt.Errorf("failed to scan: %w", err)
 	}
-	logger.Info("scan complete", "duration_msec", time.Since(before).Milliseconds())
+	logger.Info("scan complete", "duration_msec", time.Since(start).Milliseconds())
+
+	// start the Prometheus metrics server
+	go func() {
+		if err := cfg.Serve(ctx); err != nil {
+			logger.Error("failed to start Prometheus server", "err", err)
+		}
+	}()
 
 	// start the GitHub webhook handler
 	s := http.Server{
-		Addr:    cfg.GitHub.WebHook.Addr,
-		Handler: github.NewWebHook(cfg.GitHub.WebHook.Secret, stars.Handler(store), logger),
+		Addr: cfg.GitHub.WebHook.Addr,
+		Handler: github.WebhookHandler(
+			github.WebhookHandlers{StarEvent: stars.Handler(store)},
+			cfg.GitHub.WebHook.Secret,
+			logger,
+		),
 	}
 
 	logger.Info("starting webhook server", "addr", cfg.GitHub.WebHook.Addr)

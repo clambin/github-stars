@@ -5,10 +5,6 @@ import (
 	"log/slog"
 )
 
-func varPtr[T any](v T) *T {
-	return &v
-}
-
 func slogWithoutTime(w io.Writer, level slog.Level) *slog.Logger {
 	return slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{
 		Level: level,

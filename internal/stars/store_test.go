@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/clambin/github-stars/internal/github"
 	"github.com/clambin/github-stars/slogctx"
-	"github.com/google/go-github/v76/github"
 	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,44 +23,52 @@ func TestStore(t *testing.T) {
 	store, err := NewStore(tmpDir)
 	require.NoError(t, err)
 
-	repo := &github.Repository{FullName: varPtr("foo/bar")}
-	toAdd := []*github.Stargazer{
-		{
-			StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC)},
-			User:      &github.User{Login: varPtr("user1")},
-		},
-		{
-			StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 9, 0, 0, 0, time.UTC)},
-			User:      &github.User{Login: varPtr("user2")},
-		},
+	toAdd := []github.Stargazer{
+		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "foo/bar", "", "user1", ""},
+		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "foo/bar", "", "user2", ""},
 	}
 
 	// Add the new stargazers. All should be added
-	added, err := store.Add(repo, toAdd...)
+	added, err := store.Add(toAdd...)
 	require.NoError(t, err)
 	require.Equal(t, toAdd, added)
 
 	// Add the same stargazers again. Nothing should change
-	added, err = store.Add(repo, toAdd...)
+	added, err = store.Add(toAdd...)
 	require.NoError(t, err)
 	require.Empty(t, added)
 
 	// Load a copy. Add the same stargazers again. Nothing should change
 	store2, err := NewStore(tmpDir)
 	require.NoError(t, err)
-	added, err = store2.Add(repo, toAdd...)
+	added, err = store2.Add(toAdd...)
 	require.NoError(t, err)
 	require.Empty(t, added)
 
 	// Delete the stargazers
-	deleted, err := store.Delete(repo, toAdd...)
+	deleted, err := store.Delete(toAdd...)
 	require.NoError(t, err)
 	require.Equal(t, toAdd, deleted)
 
 	// Delete the stargazers again. Nothing should change
-	deleted, err = store.Delete(repo, toAdd...)
+	deleted, err = store.Delete(toAdd...)
 	require.NoError(t, err)
 	require.Empty(t, deleted)
+
+	// reset the store to its initial state
+	_, err = store.Add(toAdd...)
+	require.NoError(t, err)
+
+	// Set the stargazers with new records.
+	added, deleted, err = store.Set([]github.Stargazer{
+		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "foo/bar", "", "user1", ""},
+		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "foo/bar", "", "user3", ""},
+	})
+	require.NoError(t, err)
+	require.Len(t, added, 1)
+	require.Len(t, deleted, 1)
+	require.Equal(t, "user3", added[0].Login)
+	require.Equal(t, "user2", deleted[0].Login)
 }
 
 func TestNotifyingStore(t *testing.T) {
@@ -78,19 +86,15 @@ func TestNotifyingStore(t *testing.T) {
 	var buf bytes.Buffer
 	ctx := slogctx.NewWithContext(t.Context(), slogWithoutTime(&buf, slog.LevelInfo))
 
-	repo := &github.Repository{FullName: varPtr("foo/bar"), HTMLURL: varPtr("https://example.com/foo/bar")}
-	toAdd := []*github.Stargazer{
-		{
-			StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC)},
-			User:      &github.User{HTMLURL: varPtr("https://example.com/user1"), Login: varPtr("user1")},
-		},
+	toAdd := []github.Stargazer{
+		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "foo/bar", "https://example.com/foo/bar", "user1", "https://example.com/user1"},
 	}
 
-	require.NoError(t, store.Add(ctx, repo, toAdd...))
-	require.NoError(t, store.Delete(ctx, repo, toAdd...))
+	require.NoError(t, store.Add(ctx, toAdd...))
+	require.NoError(t, store.Delete(ctx, toAdd...))
 
-	wantSlog := `level=INFO msg="repo has 1 new stargazers" repository=foo/bar
-level=INFO msg="repo lost 1 stargazers" repository=foo/bar
+	wantSlog := `level=INFO msg="repo has 1 new stargazers" repo=foo/bar
+level=INFO msg="repo lost 1 stargazers" repo=foo/bar
 `
 	assert.Equal(t, wantSlog, buf.String())
 
