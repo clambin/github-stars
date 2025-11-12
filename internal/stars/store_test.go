@@ -24,8 +24,8 @@ func TestStore(t *testing.T) {
 	require.NoError(t, err)
 
 	toAdd := []github.Stargazer{
-		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "foo/bar", "", "user1", ""},
-		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "foo/bar", "", "user2", ""},
+		{StarredAt: time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), RepoName: "foo/bar", Login: "user1"},
+		{StarredAt: time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), RepoName: "foo/bar", Login: "user2"},
 	}
 
 	// Add the new stargazers. All should be added
@@ -61,8 +61,8 @@ func TestStore(t *testing.T) {
 
 	// Set the stargazers with new records.
 	added, deleted, err = store.Set([]github.Stargazer{
-		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "foo/bar", "", "user1", ""},
-		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "foo/bar", "", "user3", ""},
+		{StarredAt: time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), RepoName: "foo/bar", Login: "user1"},
+		{StarredAt: time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), RepoName: "foo/bar", Login: "user3"},
 	})
 	require.NoError(t, err)
 	require.Len(t, added, 1)
@@ -87,7 +87,7 @@ func TestNotifyingStore(t *testing.T) {
 	ctx := slogctx.NewWithContext(t.Context(), slogWithoutTime(&buf, slog.LevelInfo))
 
 	toAdd := []github.Stargazer{
-		{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "foo/bar", "https://example.com/foo/bar", "user1", "https://example.com/user1"},
+		{StarredAt: time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), RepoName: "foo/bar", RepoHTMLURL: "https://example.com/foo/bar", Login: "user1", UserHTMLURL: "https://example.com/user1"},
 	}
 
 	require.NoError(t, store.Add(ctx, toAdd...))

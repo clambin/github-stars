@@ -17,8 +17,8 @@ import (
 func TestScan(t *testing.T) {
 	c := fakeClient{
 		stargazers: []github.Stargazer{
-			{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "user1/foo", "", "user1", ""},
-			{time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), "", "user1/bar", "", "user1", ""},
+			{StarredAt: time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), RepoName: "user1/foo", Login: "user1"},
+			{StarredAt: time.Date(2024, time.November, 20, 8, 0, 0, 0, time.UTC), RepoName: "user1/bar", Login: "user1"},
 		},
 	}
 
