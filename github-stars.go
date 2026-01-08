@@ -110,7 +110,7 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 	s := http.Server{
 		Addr: cfg.GitHub.WebHook.Addr,
 		Handler: github.WebhookHandler(
-			github.WebhookHandlers{StarEvent: stars.Handler(store)},
+			github.WebhookHandlers{StarEvent: stars.WebhookHandler(store)},
 			cfg.GitHub.WebHook.Secret,
 			logger,
 		),

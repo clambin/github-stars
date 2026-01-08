@@ -9,6 +9,7 @@ import (
 
 	"github.com/clambin/github-stars/internal/github"
 	"github.com/clambin/github-stars/internal/stars"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,15 +33,14 @@ func TestRun(t *testing.T) {
 	}()
 
 	// wait for the handler to perform the scan and start serving the webhook
-	for {
-		time.Sleep(10 * time.Millisecond)
-		if resp, err := http.Get(fmt.Sprintf("http://localhost%s/readyz", cfg.GitHub.WebHook.Addr)); err == nil {
-			_ = resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
-				break
-			}
+	assert.Eventually(t, func() bool {
+		resp, err := http.Get(fmt.Sprintf("http://localhost%s/readyz", cfg.GitHub.WebHook.Addr))
+		if err != nil {
+			return false
 		}
-	}
+		_ = resp.Body.Close()
+		return resp.StatusCode == http.StatusOK
+	}, 10*time.Millisecond, 5*time.Second)
 
 	// stop the handler
 	cancel()

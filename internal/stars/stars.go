@@ -26,8 +26,8 @@ func Scan(ctx context.Context, user string, c Client, s *NotifyingStore, include
 	return nil
 }
 
-// Handler returns a webhook handler for GitHub star events.
-func Handler(store *NotifyingStore) func(ctx context.Context, stargazer github.Stargazer) error {
+// WebhookHandler returns a webhook handler for GitHub star events.
+func WebhookHandler(store *NotifyingStore) func(ctx context.Context, stargazer github.Stargazer) error {
 	return func(ctx context.Context, stargazer github.Stargazer) (err error) {
 		// Get logger
 		logger := slogctx.FromContext(ctx).With(

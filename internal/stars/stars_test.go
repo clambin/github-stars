@@ -44,7 +44,7 @@ func TestHandler(t *testing.T) {
 	}
 	store, err := NewNotifyingStore(t.TempDir(), notifiers)
 	require.NoError(t, err)
-	h := Handler(store)
+	h := WebhookHandler(store)
 
 	var logBuf bytes.Buffer
 	ctx := slogctx.New(slogWithoutTime(&logBuf, slog.LevelInfo))
