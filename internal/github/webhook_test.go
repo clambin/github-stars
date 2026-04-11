@@ -53,10 +53,10 @@ func TestNewStarEventWebhook(t *testing.T) {
 			name:      "add",
 			eventType: "star",
 			event: github.StarEvent{
-				Action:    github.Ptr("created"),
+				Action:    new("created"),
 				StarredAt: &github.Timestamp{Time: time.Date(2025, time.November, 7, 21, 30, 0, 0, time.UTC)},
-				Repo:      &github.Repository{FullName: github.Ptr("foo/bar")},
-				Sender:    &github.User{Login: github.Ptr("user1")},
+				Repo:      &github.Repository{FullName: new("foo/bar")},
+				Sender:    &github.User{Login: new("user1")},
 			},
 			secret: secret,
 			want: Stargazer{
@@ -71,9 +71,9 @@ func TestNewStarEventWebhook(t *testing.T) {
 			name:      "delete",
 			eventType: "star",
 			event: github.StarEvent{
-				Action: github.Ptr("deleted"),
-				Repo:   &github.Repository{FullName: github.Ptr("foo/bar")},
-				Sender: &github.User{Login: github.Ptr("user1")},
+				Action: new("deleted"),
+				Repo:   &github.Repository{FullName: new("foo/bar")},
+				Sender: &github.User{Login: new("user1")},
 			},
 			secret: secret,
 			want: Stargazer{
