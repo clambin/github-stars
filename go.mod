@@ -1,12 +1,12 @@
 module github.com/clambin/github-stars
 
-go 1.25
+go 1.26
 
 require (
 	codeberg.org/clambin/go-common/flagger v0.3.0
 	codeberg.org/clambin/go-common/httputils v0.4.1
 	github.com/google/go-github/v81 v81.0.0
-	github.com/slack-go/slack v0.19.0
+	github.com/slack-go/slack v0.21.1
 	github.com/stretchr/testify v1.11.1
 )
 

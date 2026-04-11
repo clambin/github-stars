@@ -260,7 +260,7 @@ func (s SlackNotifier) Notify(ctx context.Context, added bool, stars []github.St
 	for _, stargazers := range stargazersByRepo(stars) {
 		err := slack.PostWebhook(s.WebHookURL, &slack.WebhookMessage{
 			Text:        s.makeMessage(stargazers, added),
-			UnfurlLinks: false,
+			UnfurlLinks: new(false),
 		})
 		if err != nil {
 			slogctx.FromContext(ctx).Warn("Failed to post message", "err", err)

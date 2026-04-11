@@ -50,11 +50,11 @@ type repoResponsePage struct {
 
 var listResponses = map[int]repoResponsePage{
 	0: {
-		repos: []*github.Repository{{FullName: github.Ptr("foo/foo"), Name: github.Ptr("foo")}},
+		repos: []*github.Repository{{FullName: new("foo/foo"), Name: new("foo")}},
 		resp:  &github.Response{NextPage: 1},
 	},
 	1: {
-		repos: []*github.Repository{{FullName: github.Ptr("foo/bar"), Name: github.Ptr("bar")}},
+		repos: []*github.Repository{{FullName: new("foo/bar"), Name: new("bar")}},
 		resp:  &github.Response{NextPage: 0},
 	},
 }
@@ -71,14 +71,14 @@ var listStargazersResponses = map[string]map[int]stargazerResponse{
 		0: {
 			gazers: []*github.Stargazer{{
 				StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
-				User:      &github.User{Login: github.Ptr("user1")},
+				User:      &github.User{Login: new("user1")},
 			}},
 			resp: &github.Response{NextPage: 1},
 		},
 		1: {
 			gazers: []*github.Stargazer{{
 				StarredAt: &github.Timestamp{Time: time.Date(2024, time.November, 19, 21, 30, 0, 0, time.UTC)},
-				User:      &github.User{Login: github.Ptr("user2")},
+				User:      &github.User{Login: new("user2")},
 			}},
 			resp: &github.Response{NextPage: 0},
 		},
