@@ -40,7 +40,7 @@ func TestRun(t *testing.T) {
 		}
 		_ = resp.Body.Close()
 		return resp.StatusCode == http.StatusOK
-	}, 10*time.Millisecond, 5*time.Second)
+	}, 5*time.Second, 10*time.Millisecond)
 
 	// stop the handler
 	cancel()
