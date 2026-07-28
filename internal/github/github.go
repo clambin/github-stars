@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v84/github"
+	"github.com/google/go-github/v89/github"
 )
 
 type Client struct {
@@ -21,12 +21,15 @@ type Activity interface {
 	ListStargazers(ctx context.Context, owner string, repo string, opts *github.ListOptions) ([]*github.Stargazer, *github.Response, error)
 }
 
-func NewGitHubClient(token string) *Client {
-	client := github.NewClient(nil).WithAuthToken(token)
+func NewGitHubClient(token string) (*Client, error) {
+	client, err := github.NewClient(github.WithAuthToken(token))
+	if err != nil {
+		return nil, err
+	}
 	return &Client{
 		Repositories: client.Repositories,
 		Activity:     client.Activity,
-	}
+	}, nil
 }
 
 // Stargazer represents a star from one user for one repository.

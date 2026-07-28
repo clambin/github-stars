@@ -5,7 +5,7 @@ go 1.26
 require (
 	codeberg.org/clambin/go-common/flagger v0.3.0
 	codeberg.org/clambin/go-common/httputils v0.5.0
-	github.com/google/go-github/v84 v84.0.0
+	github.com/google/go-github/v89 v89.0.0
 	github.com/slack-go/slack v0.27.0
 	github.com/stretchr/testify v1.11.1
 )
@@ -22,7 +22,6 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
-	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

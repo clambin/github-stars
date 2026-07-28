@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/clambin/github-stars/slogctx"
-	"github.com/google/go-github/v84/github"
+	"github.com/google/go-github/v89/github"
 )
 
 // WebhookHandlers is a collection of handlers for GitHub events.

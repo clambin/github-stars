@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-github/v84/github"
+	"github.com/google/go-github/v89/github"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestClient_Stars(t *testing.T) {
-	client := NewGitHubClient("")
+	client, _ := NewGitHubClient("test-token")
 	client.Repositories = fakeRepositories{}
 	client.Activity = fakeActivity{}
 

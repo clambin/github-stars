@@ -62,9 +62,14 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	client := github.NewGitHubClient(cfg.GitHub.Token)
-	if err := runWithClient(ctx, client, cfg); err != nil {
-		cfg.Logger(os.Stderr, nil).Error("failed to run", "err", err)
+	logger := cfg.Logger(os.Stderr, nil)
+	client, err := github.NewGitHubClient(cfg.GitHub.Token)
+	if err != nil {
+		logger.Error("failed to create github client", "err", err)
+		os.Exit(1)
+	}
+	if err = runWithClient(ctx, client, cfg); err != nil {
+		logger.Error("failed to run", "err", err)
 		os.Exit(1)
 	}
 }
