@@ -16,8 +16,10 @@ import (
 	"codeberg.org/clambin/go-common/flagger"
 	"codeberg.org/clambin/go-common/httputils"
 	"github.com/clambin/github-stars/internal/github"
+	"github.com/clambin/github-stars/internal/server"
 	"github.com/clambin/github-stars/internal/stars"
 	"github.com/clambin/github-stars/slogctx"
+	"golang.org/x/sync/errgroup"
 )
 
 var version = "(devel)"
@@ -104,26 +106,37 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 	}
 	logger.Info("scan complete", "duration_msec", time.Since(start).Milliseconds())
 
-	// start the Prometheus metrics server
-	go func() {
-		if err := cfg.Serve(ctx); err != nil {
-			logger.Error("failed to start Prometheus server", "err", err)
+	var g errgroup.Group
+	g.Go(func() error {
+		err := cfg.Serve(ctx)
+		if err != nil {
+			err = fmt.Errorf("failed to start Prometheus server: %w", err)
 		}
-	}()
+		return err
+	})
+	g.Go(func() error {
+		// start the GitHub webhook handler
+		mux := http.NewServeMux()
+		mux.Handle("GET /readyz", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		}))
+		mux.Handle("GET /", server.New(store, cfg.GitHub.WebHook.Secret, logger))
 
-	// start the GitHub webhook handler
-	s := http.Server{
-		Addr: cfg.GitHub.WebHook.Addr,
-		Handler: github.WebhookHandler(
-			github.WebhookHandlers{StarEvent: stars.WebhookHandler(store)},
-			cfg.GitHub.WebHook.Secret,
-			logger,
-		),
-	}
+		s := http.Server{
+			Addr:    cfg.GitHub.WebHook.Addr,
+			Handler: mux,
+		}
 
-	logger.Info("starting webhook server", "addr", cfg.GitHub.WebHook.Addr)
-	if err = httputils.RunServer(ctx, &s); err != nil {
-		return fmt.Errorf("failed to start webhook server: %w", err)
+		logger.Info("starting webhook server", "addr", cfg.GitHub.WebHook.Addr)
+		err := httputils.RunServer(ctx, &s)
+		if err != nil {
+			err = fmt.Errorf("failed to start webhook server: %w", err)
+		}
+		return err
+	})
+
+	if err = g.Wait(); err != nil {
+		logger.Error("failed to start server", "err", err)
 	}
 	return nil
 }

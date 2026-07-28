@@ -25,8 +25,7 @@ func TestRun(t *testing.T) {
 	}
 
 	// start the handler
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	ctx, cancel := context.WithCancel(t.Context())
 	errCh := make(chan error)
 	go func() {
 		errCh <- runWithClient(ctx, &client, cfg)
@@ -40,7 +39,7 @@ func TestRun(t *testing.T) {
 		}
 		_ = resp.Body.Close()
 		return resp.StatusCode == http.StatusOK
-	}, 5*time.Second, 10*time.Millisecond)
+	}, 5*time.Second, 1000*time.Millisecond)
 
 	// stop the handler
 	cancel()

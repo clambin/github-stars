@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewStarEventWebhook(t *testing.T) {
+func TestWebhookHandlers(t *testing.T) {
 	const secret = "secret"
 	tests := []struct {
 		name           string
@@ -31,14 +31,12 @@ func TestNewStarEventWebhook(t *testing.T) {
 		{
 			name:           "invalid signature",
 			eventType:      "star",
-			event:          github.StarEvent{},
 			secret:         "invalid-secret",
 			wantStatusCode: http.StatusUnauthorized,
 		},
 		{
 			name:           "unsupported event type",
 			eventType:      "fork",
-			event:          github.ForkEvent{},
 			secret:         secret,
 			wantStatusCode: http.StatusBadRequest,
 		},
@@ -87,15 +85,16 @@ func TestNewStarEventWebhook(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handlers := WebhookHandlers{
+			h := WebhookHandler{
 				StarEvent: func(_ context.Context, stargazer Stargazer) error {
 					if stargazer != tt.want {
 						return fmt.Errorf("got %v, want %v", stargazer, tt.want)
 					}
 					return nil
 				},
-			}
-			h := WebhookHandler(handlers, secret, slog.New(slog.DiscardHandler))
+				Secret: secret,
+				Logger: slog.New(slog.DiscardHandler),
+			}.Handler()
 
 			var buf bytes.Buffer
 			_ = json.NewEncoder(&buf).Encode(tt.event)

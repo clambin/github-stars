@@ -9,13 +9,19 @@ import (
 	"github.com/google/go-github/v89/github"
 )
 
-// WebhookHandlers is a collection of handlers for GitHub events.
-type WebhookHandlers struct {
-	StarEvent func(context.Context, Stargazer) error
+type StarEventFunc func(context.Context, Stargazer) error
+
+// WebhookHandler receives GitHub events through a webhook.
+//
+// Currently only supports the "star" event.
+type WebhookHandler struct {
+	Secret    string
+	StarEvent StarEventFunc
+	Logger    *slog.Logger
 }
 
 // Has returns true if the handler for the given event is defined.
-func (h WebhookHandlers) Has(evt string) bool {
+func (h WebhookHandler) Has(evt string) bool {
 	switch evt {
 	case "star":
 		return h.StarEvent != nil
@@ -24,21 +30,58 @@ func (h WebhookHandlers) Has(evt string) bool {
 	}
 }
 
-// WebhookHandler returns a generic GitHub Webhook handler for GitHub events.
-func WebhookHandler(handlers WebhookHandlers, secret string, logger *slog.Logger) http.Handler {
-	mux := http.NewServeMux()
-	mux.Handle("POST /",
-		withLogger(logger)(
-			webhookHandler(handlers, secret),
-		),
+func (h WebhookHandler) Handler() http.Handler {
+	return withLogger(h.Logger)(
+		http.HandlerFunc(h.serveWebhook),
 	)
-	mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	})
-	return mux
 }
 
-// withLogger returns an HTTP middleware that adds a logger to the context of the request.
+func (h WebhookHandler) serveWebhook(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	logger := slogctx.FromContext(ctx)
+	logger.Debug("webhook call received")
+	// check the signature
+	payload, err := github.ValidatePayload(r, []byte(h.Secret))
+	if err != nil {
+		logger.Error("Unable to validate payload", "err", err)
+		http.Error(w, "invalid payload", http.StatusUnauthorized)
+		return
+	}
+	// check that we have a handler for this type of event
+	webhookType := github.WebHookType(r)
+	if !h.Has(webhookType) {
+		logger.Error("Unsupported webhook type", "type", webhookType)
+		http.Error(w, "unsupported webhook type", http.StatusBadRequest)
+	}
+	// parse the payload
+	logger.Debug("webhook validated", "type", webhookType)
+	req, err := github.ParseWebHook(webhookType, payload)
+	if err != nil {
+		logger.Error("Unable to parse webhook", "err", err)
+		http.Error(w, "invalid payload", http.StatusBadRequest)
+		return
+	}
+	// handle the event
+	switch evt := req.(type) {
+	case *github.StarEvent:
+		stargazer := Stargazer{
+			Action:      evt.GetAction(),
+			RepoName:    evt.Repo.GetFullName(),
+			RepoHTMLURL: evt.Repo.GetHTMLURL(),
+			Login:       evt.Sender.GetLogin(),
+			UserHTMLURL: evt.Sender.GetHTMLURL(),
+			StarredAt:   evt.GetStarredAt().Time,
+		}
+		if err = h.StarEvent(ctx, stargazer); err != nil {
+			logger.Error("Unable to handle StarEvent", "err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+// withLogger returns an HTTP middleware that adds a GitHub webhook-aware logger to the context of the request.
 func withLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	headers := []struct {
 		httpHeader string
@@ -61,51 +104,4 @@ func withLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(slogctx.NewWithContext(r.Context(), l)))
 		})
 	}
-}
-
-// webhookHandler dispatches GitHub webhook calls to the appropriate handler.
-func webhookHandler(handlers WebhookHandlers, secret string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger := slogctx.FromContext(r.Context())
-		logger.Debug("webhook call received")
-		// check the signature
-		payload, err := github.ValidatePayload(r, []byte(secret))
-		if err != nil {
-			logger.Error("Unable to validate payload", "err", err)
-			http.Error(w, "invalid payload", http.StatusUnauthorized)
-			return
-		}
-		// check that we have a handler for this type of event
-		webhookType := github.WebHookType(r)
-		if !handlers.Has(webhookType) {
-			logger.Error("Unsupported webhook type", "type", webhookType)
-			http.Error(w, "unsupported webhook type", http.StatusBadRequest)
-		}
-		// parse the payload
-		logger.Debug("webhook validated", "type", webhookType)
-		req, err := github.ParseWebHook(webhookType, payload)
-		if err != nil {
-			logger.Error("Unable to parse webhook", "err", err)
-			http.Error(w, "invalid payload", http.StatusBadRequest)
-			return
-		}
-		// handle the event
-		switch evt := req.(type) {
-		case *github.StarEvent:
-			stargazer := Stargazer{
-				Action:      evt.GetAction(),
-				RepoName:    evt.Repo.GetFullName(),
-				RepoHTMLURL: evt.Repo.GetHTMLURL(),
-				Login:       evt.Sender.GetLogin(),
-				UserHTMLURL: evt.Sender.GetHTMLURL(),
-				StarredAt:   evt.GetStarredAt().Time,
-			}
-			if err = handlers.StarEvent(r.Context(), stargazer); err != nil {
-				logger.Error("Unable to handle StarEvent", "err", err)
-				http.Error(w, "internal error", http.StatusInternalServerError)
-				return
-			}
-		}
-		w.WriteHeader(http.StatusOK)
-	})
 }

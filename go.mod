@@ -8,6 +8,7 @@ require (
 	github.com/google/go-github/v89 v89.0.0
 	github.com/slack-go/slack v0.27.0
 	github.com/stretchr/testify v1.11.1
+	golang.org/x/sync v0.21.0
 )
 
 require (
