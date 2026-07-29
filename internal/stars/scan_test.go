@@ -26,7 +26,7 @@ func TestScan(t *testing.T) {
 	store, err := NewNotifyingStore(t.TempDir(), Notifiers{SlogNotifier{}})
 	require.NoError(t, err)
 
-	require.NoError(t, Scan(ctx, "user1", &c, store, false))
+	require.NoError(t, Scan(ctx, "user1", &c, store))
 
 	assert.Contains(t, buf.String(), "level=INFO msg=\"repo has 1 new stargazers\" repo=user1/foo\n")
 	assert.Contains(t, buf.String(), "level=INFO msg=\"repo has 1 new stargazers\" repo=user1/bar\n")
@@ -38,6 +38,6 @@ type fakeClient struct {
 	stargazers []github.Stargazer
 }
 
-func (f fakeClient) Stargazers(context.Context, string, bool) ([]github.Stargazer, error) {
+func (f fakeClient) Stargazers(_ context.Context, _ string) ([]github.Stargazer, error) {
 	return f.stargazers, nil
 }

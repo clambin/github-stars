@@ -52,6 +52,6 @@ type fakeClient struct {
 	stargazers []github.Stargazer
 }
 
-func (f fakeClient) Stargazers(context.Context, string, bool) ([]github.Stargazer, error) {
+func (f fakeClient) Stargazers(_ context.Context, _ string) ([]github.Stargazer, error) {
 	return f.stargazers, nil
 }

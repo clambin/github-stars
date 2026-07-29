@@ -31,7 +31,6 @@ type configuration struct {
 	Slack     slackConfiguration
 	Directory string `flagger.usage:"database directory"`
 	User      string `flagger.usage:"user to scan for repositories"`
-	Archived  bool   `flagger.usage:"include archived repositories"`
 }
 
 type githubConfiguration struct {
@@ -101,7 +100,7 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 	// on startup, scan all repos. This will find any stars while we weren't running.
 	start := time.Now()
 	logger.Info("starting scan")
-	if err = stars.Scan(ctx, cfg.User, client, store, cfg.Archived); err != nil {
+	if err = stars.Scan(ctx, cfg.User, client, store); err != nil {
 		return fmt.Errorf("failed to scan: %w", err)
 	}
 	logger.Info("scan complete", "duration_msec", time.Since(start).Milliseconds())

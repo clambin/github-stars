@@ -43,8 +43,7 @@ type Stargazer struct {
 }
 
 // Stargazers returns the list of stargazers for a user's repositories.
-// If includeArchived is true, archived repositories are included.
-func (c Client) Stargazers(ctx context.Context, user string, includeArchived bool) ([]Stargazer, error) {
+func (c Client) Stargazers(ctx context.Context, user string) ([]Stargazer, error) {
 	var stargazers []Stargazer
 
 	repos, err := c.userRepos(ctx, user)
@@ -52,7 +51,8 @@ func (c Client) Stargazers(ctx context.Context, user string, includeArchived boo
 		return nil, err
 	}
 	for _, repo := range repos {
-		if repo.GetArchived() && !includeArchived {
+		// can't get stargazers for archived repositories
+		if repo.GetArchived() {
 			continue
 		}
 		gazers, err := c.starGazers(ctx, repo)

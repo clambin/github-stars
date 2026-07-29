@@ -17,7 +17,7 @@ func TestClient_Stars(t *testing.T) {
 	client.Repositories = fakeRepositories{}
 	client.Activity = fakeActivity{}
 
-	stars, err := client.Stargazers(context.Background(), "bar", true)
+	stars, err := client.Stargazers(context.Background(), "bar")
 	require.NoError(t, err)
 
 	want := []Stargazer{

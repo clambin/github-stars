@@ -8,12 +8,14 @@ import (
 )
 
 type Client interface {
-	Stargazers(context.Context, string, bool) ([]github.Stargazer, error)
+	Stargazers(context.Context, string) ([]github.Stargazer, error)
 }
 
+var _ Client = (*github.Client)(nil)
+
 // Scan retrieves all repositories for the user, gets the stars for each repository and adds new ones to the Store.
-func Scan(ctx context.Context, user string, c Client, s *NotifyingStore, includeArchived bool) error {
-	stargazers, err := c.Stargazers(ctx, user, includeArchived)
+func Scan(ctx context.Context, user string, c Client, s *NotifyingStore) error {
+	stargazers, err := c.Stargazers(ctx, user)
 	if err != nil {
 		return fmt.Errorf("stars: %w", err)
 	}
