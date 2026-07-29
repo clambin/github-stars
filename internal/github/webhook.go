@@ -15,9 +15,9 @@ type StarEventFunc func(context.Context, Stargazer) error
 //
 // Currently only supports the "star" event.
 type WebhookHandler struct {
-	Secret    string
 	StarEvent StarEventFunc
 	Logger    *slog.Logger
+	Secret    string
 }
 
 // Has returns true if the handler for the given event is defined.
@@ -52,6 +52,7 @@ func (h WebhookHandler) serveWebhook(w http.ResponseWriter, r *http.Request) {
 	if !h.Has(webhookType) {
 		logger.Error("Unsupported webhook type", "type", webhookType)
 		http.Error(w, "unsupported webhook type", http.StatusBadRequest)
+		return
 	}
 	// parse the payload
 	logger.Debug("webhook validated", "type", webhookType)
@@ -77,8 +78,11 @@ func (h WebhookHandler) serveWebhook(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
+		w.WriteHeader(http.StatusOK)
+	default:
+		logger.Error("Unhandled webhook event", "event", webhookType)
+		http.Error(w, "unhandled webhook event", http.StatusBadRequest)
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 // withLogger returns an HTTP middleware that adds a GitHub webhook-aware logger to the context of the request.

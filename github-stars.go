@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,10 +16,12 @@ import (
 
 	"codeberg.org/clambin/go-common/flagger"
 	"codeberg.org/clambin/go-common/httputils"
+	"codeberg.org/clambin/go-common/httputils/metrics"
 	"github.com/clambin/github-stars/internal/github"
 	"github.com/clambin/github-stars/internal/server"
 	"github.com/clambin/github-stars/internal/stars"
 	"github.com/clambin/github-stars/slogctx"
+	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -69,15 +72,14 @@ func main() {
 		logger.Error("failed to create github client", "err", err)
 		os.Exit(1)
 	}
-	if err = runWithClient(ctx, client, cfg); err != nil {
+	if err = runWithClient(ctx, client, cfg, prometheus.DefaultRegisterer, logger); err != nil {
 		logger.Error("failed to run", "err", err)
 		os.Exit(1)
 	}
 }
 
-func runWithClient(ctx context.Context, client stars.Client, cfg configuration) error {
+func runWithClient(ctx context.Context, client stars.Client, cfg configuration, r prometheus.Registerer, logger *slog.Logger) error {
 	// setup
-	logger := cfg.Logger(os.Stderr, nil)
 	logger.Info("starting github-stars", "version", version)
 	ctx = slogctx.NewWithContext(ctx, logger)
 
@@ -105,6 +107,12 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 	}
 	logger.Info("scan complete", "duration_msec", time.Since(start).Milliseconds())
 
+	requestMetrics := metrics.NewRequestMetrics(metrics.Options{
+		ConstLabels:  prometheus.Labels{"application": "github-stars"},
+		DurationType: metrics.SummaryDuration,
+	})
+	r.MustRegister(requestMetrics)
+
 	var g errgroup.Group
 	g.Go(func() error {
 		err := cfg.Serve(ctx)
@@ -119,7 +127,9 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration) 
 		mux.Handle("GET /readyz", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		}))
-		mux.Handle("GET /", server.New(store, cfg.GitHub.WebHook.Secret, logger))
+		mux.Handle("POST /", requestMetrics.Handler(
+			server.New(store, cfg.GitHub.WebHook.Secret, logger),
+		))
 
 		s := http.Server{
 			Addr:    cfg.GitHub.WebHook.Addr,
