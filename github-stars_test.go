@@ -12,6 +12,7 @@ import (
 	"github.com/clambin/github-stars/internal/github"
 	"github.com/clambin/github-stars/internal/stars"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -54,14 +55,11 @@ func TestRun(t *testing.T) {
 	cancel()
 	require.NoError(t, <-errCh)
 
-	/*
-			require.NoError(t, testutil.CollectAndCompare(r, strings.NewReader(`
+	require.NoError(t, testutil.CollectAndCompare(r, strings.NewReader(`
 		# HELP http_requests_total total number of http requests
 		# TYPE http_requests_total counter
-		http_requests_total{application="github-stars",code="400",method="post"} 1
+		http_requests_total{code="400",method="post"} 1
 		`), "http_requests_total"))
-
-	*/
 }
 
 var _ stars.Client = fakeClient{}

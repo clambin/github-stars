@@ -108,7 +108,6 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration, 
 	logger.Info("scan complete", "duration_msec", time.Since(start).Milliseconds())
 
 	requestMetrics := metrics.NewRequestMetrics(metrics.Options{
-		ConstLabels:  prometheus.Labels{"application": "github-stars"},
 		DurationType: metrics.SummaryDuration,
 	})
 	r.MustRegister(requestMetrics)
