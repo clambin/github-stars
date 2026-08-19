@@ -7,7 +7,7 @@ require (
 	codeberg.org/clambin/go-common/httputils v0.5.0
 	github.com/google/go-github/v89 v89.0.0
 	github.com/prometheus/client_golang v1.24.1
-	github.com/slack-go/slack v0.27.0
+	github.com/slack-go/slack v0.29.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sync v0.22.0
 )
