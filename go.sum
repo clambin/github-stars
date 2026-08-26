@@ -1,7 +1,7 @@
 codeberg.org/clambin/go-common/flagger v0.3.0 h1:ffSFk4lK/ZiP4A+wrU1aw7HTCvMavwS6DFmXwY5ddh0=
 codeberg.org/clambin/go-common/flagger v0.3.0/go.mod h1:YKqJzGwddBMAf+FarywFRRddbdpGLjDEBhm42/qT/g4=
-codeberg.org/clambin/go-common/httputils v0.5.0 h1:pMOBcSJa0lPWEVxkiv5ntlnZtUtKW6K/ZVtuCNjG8Oc=
-codeberg.org/clambin/go-common/httputils v0.5.0/go.mod h1:ZDkClJ2+/6iVHRg5Y7QyRnl8pFeiRcYlhatwwkfmqDU=
+codeberg.org/clambin/go-common/httputils v0.5.1 h1:Uj2JB4JstOhJIp9tKwlzsQjY8D+FRdL1vbnUdH0sjl0=
+codeberg.org/clambin/go-common/httputils v0.5.1/go.mod h1:HLt+R1Lu8EvHdZ6nlMr/aYMT+5CqCXdo3zSTvdzeZRY=
 codeberg.org/clambin/go-common/testutils v0.7.2 h1:6dwCCfhCRbUXPxwBtVMg3/Pi7wV2mS9ZN2ExUCtI11A=
 codeberg.org/clambin/go-common/testutils v0.7.2/go.mod h1:9tB1/HAyA9ypRrY/nCB1uCs/xXbArm/XOtLbUhD0W6g=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
