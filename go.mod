@@ -1,6 +1,6 @@
 module github.com/clambin/github-stars
 
-go 1.26
+go 1.26.0
 
 require (
 	codeberg.org/clambin/go-common/flagger v0.3.0
@@ -9,7 +9,7 @@ require (
 	github.com/prometheus/client_golang v1.24.1
 	github.com/slack-go/slack v0.27.0
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.23.0
 )
 
 require (
