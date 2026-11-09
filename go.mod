@@ -1,6 +1,6 @@
 module github.com/clambin/github-stars
 
-go 1.26.0
+go 1.27
 
 require (
 	codeberg.org/clambin/go-common/flagger v0.3.0

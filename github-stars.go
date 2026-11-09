@@ -89,8 +89,7 @@ func runWithClient(ctx context.Context, client stars.Client, cfg configuration, 
 	}
 
 	store, err := stars.NewNotifyingStore(cfg.Directory, notifiers)
-	var jsonErr *json.UnmarshalTypeError
-	if errors.As(err, &jsonErr) {
+	if _, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 		logger.Warn("failed to load database. reinitializing ....", "err", err)
 		_ = os.Remove(filepath.Join(cfg.Directory, stars.StoreFilename))
 		store, err = stars.NewNotifyingStore(cfg.Directory, notifiers)
