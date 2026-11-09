@@ -6,6 +6,7 @@ require (
 	codeberg.org/clambin/go-common/flagger v0.3.0
 	codeberg.org/clambin/go-common/httputils v0.5.1
 	github.com/google/go-github/v89 v89.0.0
+	github.com/google/go-github/v93 v93.0.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/slack-go/slack v0.35.0
 	github.com/stretchr/testify v1.12.1

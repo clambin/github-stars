@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/clambin/github-stars/slogctx"
-	"github.com/google/go-github/v89/github"
+	"github.com/google/go-github/v93/github"
 )
 
 type StarEventFunc func(context.Context, Stargazer) error
