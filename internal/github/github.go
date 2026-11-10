@@ -76,7 +76,7 @@ const recordsPerPage = 100
 
 func (c Client) userRepos(ctx context.Context, user string) ([]*github.Repository, error) {
 	var repos []*github.Repository
-	listOptions := github.RepositoryListByUserOptions{ListOptions: github.ListOptions{PerPage: recordsPerPage}}
+	listOptions := github.RepositoryListByUserOptions{PerPage: recordsPerPage}
 
 	for {
 		var resp *github.Response
